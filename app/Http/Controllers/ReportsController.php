@@ -220,7 +220,6 @@ class ReportsController extends Controller
     }
 
     public function department_wise(Request $request)
-
     {
         $start_date = Carbon::parse($request->start_date)->format('Y-m-d');
         $end_date = Carbon::parse($request->end_date)->format('Y-m-d');
@@ -289,7 +288,7 @@ class ReportsController extends Controller
                         'Entitled' => PatientTest::whereBetween('created_at', [$date_start_at, $date_end_at])->where('fee_type_id', $ft->id)->where('government_non_gov', 1)->count(),
                         'Revenue' => PatientTest::whereBetween('created_at', [$date_start_at, $date_end_at])->whereIn('fee_type_id', [$ft->id, $return_fee_id])->where('government_non_gov', 0)->sum('total_amount'),
                         'HIF' => PatientTest::whereBetween('created_at', [$date_start_at, $date_end_at])->whereIn('fee_type_id', [$ft->id, $return_fee_id])->where('government_non_gov', 0)
-//                            ->whereHas('fee_type', function($query) {
+                            //                            ->whereHas('fee_type', function($query) {
 //                                $query->whereIn('status', ['Return Fee','Normal']);
 //                            })
                             ->sum('hif_amount'),
@@ -349,10 +348,9 @@ class ReportsController extends Controller
     }
 
     public function department_wise_two(Request $request)
-
     {
 
-	ini_set('max_execution_time', 300);
+        ini_set('max_execution_time', 300);
 
 
         $start_date = Carbon::parse($request->start_date)->format('Y-m-d');
@@ -364,7 +362,7 @@ class ReportsController extends Controller
 
 
         $fee_types = null;
-//        $status = ['Normal', 'Return Fee'];
+        //        $status = ['Normal', 'Return Fee'];
         $status = ['Normal'];
         $fee_category_ids = $request->input('filter.fee_category_id');
         $get_status_values = $request->input('status');
@@ -380,14 +378,14 @@ class ReportsController extends Controller
 
             $fee_types = QueryBuilder::for(FeeType::class)
                 ->orderBy('fee_category_id')
-//                ->orderByRaw('CASE WHEN status = "Normal" THEN 1 ELSE 2 END')
+                //                ->orderByRaw('CASE WHEN status = "Normal" THEN 1 ELSE 2 END')
                 ->whereIn('fee_category_id', $fee_category_ids)
                 ->whereIn('status', $status)
                 ->get();
         } else {
             $fee_types = QueryBuilder::for(FeeType::class)
                 ->orderBy('fee_category_id')
-//                ->orderByRaw('CASE WHEN status = "Normal" THEN 1 ELSE 2 END')
+                //                ->orderByRaw('CASE WHEN status = "Normal" THEN 1 ELSE 2 END')
                 ->whereIn('status', $status)
                 ->get();
         }
@@ -419,10 +417,10 @@ class ReportsController extends Controller
 
 
                 $categories[$ft->fee_category_id][$ft->id] = [
-                    'Non Entitled' => PatientTest::whereBetween('created_at', [$date_start_at, $date_end_at])->where('fee_type_id', $ft->id)->where('government_non_gov', 0)->where('status','Normal')->count(),
-                    'Entitled' => PatientTest::whereBetween('created_at', [$date_start_at, $date_end_at])->where('fee_type_id', $ft->id)->where('government_non_gov', 1)->where('status','Normal')->count(),
-                    'Return Non Entitled' => PatientTest::whereBetween('created_at', [$date_start_at, $date_end_at])->where('fee_type_id', $ft->id)->where('government_non_gov', 0)->where('status','Return')->count(),
-                    'Return Entitled' => PatientTest::whereBetween('created_at', [$date_start_at, $date_end_at])->where('fee_type_id', $ft->id)->where('government_non_gov', 1)->where('status','Return')->count(),
+                    'Non Entitled' => PatientTest::whereBetween('created_at', [$date_start_at, $date_end_at])->where('fee_type_id', $ft->id)->where('government_non_gov', 0)->where('status', 'Normal')->count(),
+                    'Entitled' => PatientTest::whereBetween('created_at', [$date_start_at, $date_end_at])->where('fee_type_id', $ft->id)->where('government_non_gov', 1)->where('status', 'Normal')->count(),
+                    'Return Non Entitled' => PatientTest::whereBetween('created_at', [$date_start_at, $date_end_at])->where('fee_type_id', $ft->id)->where('government_non_gov', 0)->where('status', 'Return')->count(),
+                    'Return Entitled' => PatientTest::whereBetween('created_at', [$date_start_at, $date_end_at])->where('fee_type_id', $ft->id)->where('government_non_gov', 1)->where('status', 'Return')->count(),
                     'HIF' => PatientTest::whereBetween('created_at', [$date_start_at, $date_end_at])->whereIn('fee_type_id', [$ft->id, $return_fee_id])->where('government_non_gov', 0)->sum('hif_amount'),
                     'GOVT' => PatientTest::whereBetween('created_at', [$date_start_at, $date_end_at])->whereIn('fee_type_id', [$ft->id, $return_fee_id])->where('government_non_gov', 0)->sum('govt_amount'),
                     'TOTAL' => PatientTest::whereBetween('created_at', [$date_start_at, $date_end_at])->whereIn('fee_type_id', [$ft->id, $return_fee_id])->where('government_non_gov', 0)->sum('total_amount'),
@@ -462,11 +460,39 @@ class ReportsController extends Controller
                 AllowedFilter::exact('district'),
                 AllowedFilter::exact('patient_id'),
                 AllowedFilter::exact('invoice_id'),
-            ],)
+            ], )
             ->whereBetween('created_at', [$date_start_at, $date_end_at])
             ->get();
 
 
         return view('reports.general-information.index', compact('admissions'));
+    }
+
+    public function emergency_treatments(Request $request)
+    {
+        $start_date = $request->has('start_date') ? Carbon::parse($request->start_date)->format('Y-m-d') : Carbon::today()->format('Y-m-d');
+        $end_date = $request->has('end_date') ? Carbon::parse($request->end_date)->format('Y-m-d') : Carbon::today()->format('Y-m-d');
+
+        $date_start_at = $start_date . ' 00:00:00';
+        $date_end_at = $end_date . ' 23:59:59';
+
+        $treatments = QueryBuilder::for(\App\Models\PatientEmergencyTreatment::class)
+            ->with('patient', 'disease', 'user')
+            ->allowedFilters([
+                'patient.first_name',
+                'patient.last_name',
+                'patient.sex',
+                'patient.address',
+                'disease.name',
+                'user.name',
+                AllowedFilter::exact('patient_id'),
+                AllowedFilter::exact('disease_id'),
+                AllowedFilter::exact('user_id'),
+            ])
+            ->whereBetween('created_at', [$date_start_at, $date_end_at])
+            ->orderBy('created_at', 'asc')
+            ->get();
+
+        return view('reports.emergency-treatments.index', compact('treatments', 'start_date', 'end_date'));
     }
 }

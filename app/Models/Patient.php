@@ -30,7 +30,7 @@ class Patient extends Model
         'registration_date',
         'phone',
         'email',
-	'address',
+        'address',
         'mobile',
         'email_alert',
         'mobile_alert',
@@ -60,5 +60,25 @@ class Patient extends Model
     public function invoices(): HasMany
     {
         return $this->hasMany(Invoice::class);
+    }
+
+    /**
+     * Get the user that owns the Patient
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
+     */
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'user_id', 'id');
+    }
+
+    /**
+     * Get the emergency treatments for the patient
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany
+     */
+    public function emergencyTreatments(): HasMany
+    {
+        return $this->hasMany(PatientEmergencyTreatment::class);
     }
 }

@@ -19,7 +19,7 @@ use Spatie\Permission\Contracts\Role;
 
 
 Route::get('/', function () {
-//    Role::create(['name' => 'Auditor','guard_name' => 'sanctum']);
+    //    Role::create(['name' => 'Auditor','guard_name' => 'sanctum']);
     return to_route('login');
 });
 
@@ -27,11 +27,11 @@ Route::middleware(['auth:sanctum', config('jetstream.auth_session'), 'verified']
 
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
-    Route::resource('roles',\App\Http\Controllers\RoleController::class);
-    Route::resource('permissions',\App\Http\Controllers\PermissionController::class);
+    Route::resource('roles', \App\Http\Controllers\RoleController::class);
+    Route::resource('permissions', \App\Http\Controllers\PermissionController::class);
 
-    Route::resource('roles',\App\Http\Controllers\RoleController::class);
-    Route::resource('permissions',\App\Http\Controllers\PermissionController::class);
+    Route::resource('roles', \App\Http\Controllers\RoleController::class);
+    Route::resource('permissions', \App\Http\Controllers\PermissionController::class);
     Route::get('/users', [UserController::class, 'index'])->name('users.index');
     Route::get('/users/create', [UserController::class, 'create'])->name('users.create');
     Route::post('/users', [UserController::class, 'store'])->name('users.store');
@@ -48,6 +48,13 @@ Route::middleware(['auth:sanctum', config('jetstream.auth_session'), 'verified']
     Route::post('patient/{patient}/generateInvoice', [\App\Http\Controllers\PatientController::class, 'proceed_to_invoice'])->name('patient.proceed_to_invoice');
     Route::get('patient/{patient}/{invoice}/show', [\App\Http\Controllers\PatientController::class, 'patient_invoice'])->name('patient.patient_invoice');
     Route::get('patient/{patient}/{invoice}/show/thermal-print', [\App\Http\Controllers\PatientController::class, 'patient_invoice_thermal_print'])->name('patient.patient_invoice_thermal_print');
+
+
+    // Emergency Treatment
+    Route::get('patient/{patient}/emergency-treatment', [\App\Http\Controllers\PatientController::class, 'emergency_treatment'])->name('patient.emergency_treatment');
+    Route::post('patient/{patient}/emergency-treatment', [\App\Http\Controllers\PatientController::class, 'emergency_treatment_store'])->name('patient.emergency_treatment_store');
+
+
 
 
     Route::get('patient/{patient}/history', [\App\Http\Controllers\PatientController::class, 'patient_history'])->name('patient.history');
@@ -83,9 +90,9 @@ Route::middleware(['auth:sanctum', config('jetstream.auth_session'), 'verified']
     Route::get('reports/ipd/reports-daily', [\App\Http\Controllers\ReportsController::class, 'reportDailyIPD'])->name('reports.opd.reportDailyIPD');
 
     Route::get('reports/misc', [\App\Http\Controllers\ReportsController::class, 'reportMisc'])->name('reports.misc');
-//    Route::get('reports/misc/category-wise', [\App\Http\Controllers\ReportsController::class, 'categoryWise'])->name('reports.misc.category-wise');
+    //    Route::get('reports/misc/category-wise', [\App\Http\Controllers\ReportsController::class, 'categoryWise'])->name('reports.misc.category-wise');
     Route::get('reports/misc/admission', [\App\Http\Controllers\ReportsController::class, 'admission'])->name('reports.misc.admission');
-
+    Route::get('reports/emergency-treatments', [\App\Http\Controllers\ReportsController::class, 'emergency_treatments'])->name('reports.emergency_treatments');
 
     Route::get('reports/misc/department-wise', [\App\Http\Controllers\ReportsController::class, 'department_wise'])->name('reports.misc.category-wise');
     Route::get('reports/misc/department-wise-two', [\App\Http\Controllers\ReportsController::class, 'department_wise_two'])->name('reports.misc.category-wise-two');

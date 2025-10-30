@@ -39,7 +39,7 @@ class PatientController extends Controller
                 'government_non_gov',
                 AllowedFilter::exact('government_card_no'),
                 AllowedFilter::exact('id'),
-            ],)
+            ], )
             ->orderByDesc('created_at') // Corrected 'DSEC' to 'DESC'
             ->paginate(3)
             ->withQueryString();
@@ -177,8 +177,7 @@ class PatientController extends Controller
                 }
                 if ($request->department_id == 23) {
                     $fee_type_id = 270;
-                }
-                else {
+                } else {
                     if ($request->department_id == 1) {
                         // For emergency
                         $fee_type_id = 1;
@@ -191,9 +190,7 @@ class PatientController extends Controller
                         }
                     }
                 }
-            }
-
-            else {
+            } else {
 
                 if ($request->department_id == 7) {
                     $amount = FeeType::find(108)->amount;
@@ -209,8 +206,7 @@ class PatientController extends Controller
                     $fee_type_id = 270;
                     // all amount goes to government
                     $govt_amount = $amount;
-                }
-                else {
+                } else {
                     if ($request->department_id == 1) {
                         // For emergency
                         $amount = FeeType::find(1)->amount;
@@ -251,7 +247,7 @@ class PatientController extends Controller
                 'designation' => $patient->designation,
                 'fee_type_id' => $fee_type_id,
                 'issued_date' => now(),
-		        'address' => $patient->address,
+                'address' => $patient->address,
                 'amount' => $amount,
                 'amount_hif' => $amount_hif,
                 'govt_amount' => $govt_amount,
@@ -333,8 +329,7 @@ class PatientController extends Controller
             $amount = null;
             if ($request->input('government_department_id')) {
                 $amount = 0.00;
-            }
-            else {
+            } else {
                 if ($request->department_id == 7) {
                     $amount = FeeType::find(108)->amount;
                     $fee_type_id = 108;
@@ -477,7 +472,7 @@ class PatientController extends Controller
             ]);
 
 
-//            foreach ($patientTestCartItems as $ptc) {
+            //            foreach ($patientTestCartItems as $ptc) {
 //                $total_amount = 0;
 //                $total_amount_hif = 0;
 //                if ($patient->government_non_gov == 1) {
@@ -644,7 +639,7 @@ class PatientController extends Controller
         }
 
 
-//        dd('ss')
+        //        dd('ss')
 //        dd($invoice->patient_test->groupBy('fee_type_id'));
         return view('patient.invoice', compact('patient', 'patient', 'fee_category_main', 'invoice', 'total_amount', 'department', 'fee_category', 'chitNumber'));
     }
@@ -685,7 +680,7 @@ class PatientController extends Controller
         }
 
 
-//        dd('ss')
+        //        dd('ss')
 //        dd($invoice->patient_test->groupBy('fee_type_id'));
         return view('patient.thermal-print', compact('patient', 'patient', 'fee_category_main', 'invoice', 'total_amount', 'department', 'fee_category', 'chitNumber'));
     }
@@ -782,4 +777,45 @@ class PatientController extends Controller
             return '0';
         }
     }
+
+
+    public function emergency_treatment(Patient $patient)
+    {
+        // get all disease sort by name
+        $diseases = DB::table('diseases')->orderBy('name', 'asc')->get();
+        return view('patient.emergency-treatment', compact('patient', 'diseases'));
+    }
+
+    public function emergency_treatment_store(Request $request, Patient $patient)
+    {
+        $request->validate([
+            'disease_id' => 'nullable|exists:diseases,id',
+            'treatment_details' => 'required|string|max:5000',
+            'medications' => 'required|string|max:5000',
+        ]);
+
+        try {
+            DB::beginTransaction();
+
+            \App\Models\PatientEmergencyTreatment::create([
+                'user_id' => auth()->id(),
+                'patient_id' => $patient->id,
+                'disease_id' => $request->disease_id ?: null,
+                'treatment_details' => $request->treatment_details,
+                'medications' => $request->medications,
+            ]);
+
+            DB::commit();
+
+            return redirect()->route('patient.emergency_treatment', $patient->id)
+                ->with('success', 'Emergency treatment recorded successfully.')
+                ->with('scroll_to', 'previous-treatments');
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return back()->withInput()
+                ->with('error', 'Failed to record emergency treatment: ' . $e->getMessage());
+        }
+    }
+
 }
