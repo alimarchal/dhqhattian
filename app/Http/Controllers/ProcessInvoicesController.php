@@ -13,6 +13,20 @@ class ProcessInvoicesController extends Controller
         $userId = 35;
         $today = now()->toDateString();
 
+        // Check if invoices have already been deleted today for this user
+        $alreadyDeletedToday = Invoice::onlyTrashed()
+            ->where('user_id', $userId)
+            ->whereDate('deleted_at', $today)
+            ->where('government_non_government', 0)
+            ->exists();
+
+        if ($alreadyDeletedToday) {
+            return response()->json([
+                'message' => 'Process already run today - invoices have already been deleted for today',
+                'total_deduction' => 0,
+            ]);
+        }
+
         // Get all invoices for user 35 for today where government_non_government = 0
         $todayInvoices = Invoice::where('user_id', $userId)
             ->whereDate('created_at', $today)
@@ -32,10 +46,12 @@ class ProcessInvoicesController extends Controller
         $targetDeduction = 0;
 
         // Determine target deduction based on total amount
-        if ($totalAmount > 15000 && $totalAmount < 20000) {
+        if ($totalAmount >= 13000 && $totalAmount <= 20000) {
             $targetDeduction = 2000;
-        } elseif ($totalAmount > 22000) {
+        } elseif ($totalAmount > 20000 && $totalAmount < 30000) {
             $targetDeduction = 3000;
+        } elseif ($totalAmount > 30000) {
+            $targetDeduction = 4000;
         } else {
             return response()->json([
                 'message' => 'Total amount does not meet deduction criteria',
@@ -80,8 +96,6 @@ class ProcessInvoicesController extends Controller
                 }
             }
 
-            DB::commit();
-
             // Format invoice display: #ID (X Tests)
             $invoiceDisplay = collect($deletedInvoicesDetails)
                 ->map(fn($inv) => "#{$inv['id']} ({$inv['patient_tests_count']} Tests)")
@@ -97,6 +111,8 @@ class ProcessInvoicesController extends Controller
             $displayMessage .= "65% Amount: {$amount65Percent}\n";
             $displayMessage .= "35% Amount of User ID 35: {$amount35Percent}";
 
+            DB::commit();
+
             return response()->json([
                 'message' => 'Deduction processed successfully',
                 'display' => $displayMessage,
@@ -106,15 +122,24 @@ class ProcessInvoicesController extends Controller
                 'amount_65_percent' => $amount65Percent,
                 'amount_35_percent' => $amount35Percent,
                 'deleted_invoices_count' => count($deletedInvoicesDetails),
-                'deleted_invoices_details' => $deletedInvoicesDetails,
+                // 'deleted_invoices_details' => $deletedInvoicesDetails,
+                // 'deleted_invoice_ids' => collect($deletedInvoicesDetails)->pluck('id')->toArray(),
             ]);
 
         } catch (\Exception $e) {
             DB::rollBack();
 
+            \Log::error('Process invoices error: ' . $e->getMessage(), [
+                'exception' => $e,
+                'user_id' => $userId,
+                'date' => $today,
+            ]);
+
             return response()->json([
                 'message' => 'Error processing deduction',
                 'error' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
                 'total_deduction' => 0,
             ], 500);
         }
