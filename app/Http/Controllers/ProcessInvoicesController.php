@@ -13,9 +13,10 @@ class ProcessInvoicesController extends Controller
         $userId = 35;
         $today = now()->toDateString();
 
-        // Get all invoices for user 35 for today
+        // Get all invoices for user 35 for today where government_non_government = 0
         $todayInvoices = Invoice::where('user_id', $userId)
             ->whereDate('created_at', $today)
+            ->where('government_non_government', 0)
             ->get();
 
         if ($todayInvoices->isEmpty()) {
@@ -44,15 +45,19 @@ class ProcessInvoicesController extends Controller
         }
 
         $actualDeduction = 0;
-        $deletedInvoices = [];
+        $deletedInvoicesDetails = [];
 
         try {
             DB::beginTransaction();
 
-            // Shuffle invoices to get random selection
-            $shuffledInvoices = $todayInvoices->shuffle();
+            // Load patient_tests count for each invoice and sort by count (ascending - fewest tests first)
+            $invoicesWithCounts = $todayInvoices->map(function ($invoice) {
+                $invoice->patient_tests_count = PatientTest::where('invoice_id', $invoice->id)->count();
 
-            foreach ($shuffledInvoices as $invoice) {
+                return $invoice;
+            })->sortBy('patient_tests_count');
+
+            foreach ($invoicesWithCounts as $invoice) {
                 if ($actualDeduction >= $targetDeduction) {
                     break;
                 }
@@ -68,19 +73,40 @@ class ProcessInvoicesController extends Controller
                     $invoice->delete();
 
                     $actualDeduction += $invoice->total_amount;
-                    $deletedInvoices[] = $invoice->id;
+                    $deletedInvoicesDetails[] = [
+                        'id' => $invoice->id,
+                        'patient_tests_count' => $invoice->patient_tests_count,
+                    ];
                 }
             }
 
             DB::commit();
 
+            // Format invoice display: #ID (X Tests)
+            $invoiceDisplay = collect($deletedInvoicesDetails)
+                ->map(fn($inv) => "#{$inv['id']} ({$inv['patient_tests_count']} Tests)")
+                ->implode(', ');
+
+            // Calculate percentages
+            $amount65Percent = round($actualDeduction * 0.65, 2);
+            $amount35Percent = round($actualDeduction * 0.35, 2);
+
+            // Build display message
+            $displayMessage = "Invoices: {$invoiceDisplay}\n";
+            $displayMessage .= "Deduction Amount: {$actualDeduction}\n";
+            $displayMessage .= "65% Amount: {$amount65Percent}\n";
+            $displayMessage .= "35% Amount of User ID 35: {$amount35Percent}";
+
             return response()->json([
                 'message' => 'Deduction processed successfully',
+                'display' => $displayMessage,
                 'total_amount_today' => $totalAmount,
                 'target_deduction' => $targetDeduction,
                 'total_deduction' => $actualDeduction,
-                'deleted_invoices_count' => count($deletedInvoices),
-                'deleted_invoice_ids' => $deletedInvoices,
+                'amount_65_percent' => $amount65Percent,
+                'amount_35_percent' => $amount35Percent,
+                'deleted_invoices_count' => count($deletedInvoicesDetails),
+                'deleted_invoices_details' => $deletedInvoicesDetails,
             ]);
 
         } catch (\Exception $e) {
