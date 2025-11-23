@@ -5,7 +5,10 @@
       "Bash(composer require:*)",
       "Bash(cat:*)",
       "mcp__laravel-boost__database-schema",
-      "Bash(vendor/bin/pint:*)"
+      "Bash(vendor/bin/pint:*)",
+      "mcp__laravel-boost__database-query",
+      "Bash(xargs:*)",
+      "mcp__laravel-boost__tinker"
     ],
     "deny": [],
     "ask": []
