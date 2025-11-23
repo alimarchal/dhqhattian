@@ -2,7 +2,6 @@
 
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\UserController;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 use Spatie\Permission\Contracts\Role;
 
@@ -16,7 +15,6 @@ use Spatie\Permission\Contracts\Role;
 | be assigned to the "web" middleware group. Make something great!
 |
 */
-
 
 Route::get('/', function () {
     //    Role::create(['name' => 'Auditor','guard_name' => 'sanctum']);
@@ -36,7 +34,6 @@ Route::middleware(['auth:sanctum', config('jetstream.auth_session'), 'verified']
     Route::get('/users/create', [UserController::class, 'create'])->name('users.create');
     Route::post('/users', [UserController::class, 'store'])->name('users.store');
 
-
     Route::resource('department', \App\Http\Controllers\DepartmentController::class);
     Route::resource('governmentDepartment', \App\Http\Controllers\GovernmentDepartmentController::class);
 
@@ -49,13 +46,9 @@ Route::middleware(['auth:sanctum', config('jetstream.auth_session'), 'verified']
     Route::get('patient/{patient}/{invoice}/show', [\App\Http\Controllers\PatientController::class, 'patient_invoice'])->name('patient.patient_invoice');
     Route::get('patient/{patient}/{invoice}/show/thermal-print', [\App\Http\Controllers\PatientController::class, 'patient_invoice_thermal_print'])->name('patient.patient_invoice_thermal_print');
 
-
     // Emergency Treatment
     Route::get('patient/{patient}/emergency-treatment', [\App\Http\Controllers\PatientController::class, 'emergency_treatment'])->name('patient.emergency_treatment');
     Route::post('patient/{patient}/emergency-treatment', [\App\Http\Controllers\PatientController::class, 'emergency_treatment_store'])->name('patient.emergency_treatment_store');
-
-
-
 
     Route::get('patient/{patient}/history', [\App\Http\Controllers\PatientController::class, 'patient_history'])->name('patient.history');
     Route::post('patient/invoice', [\App\Http\Controllers\PatientController::class, 'patient_test_invoice_generate'])->name('patient.patient_test_invoice_generate');
@@ -65,7 +58,6 @@ Route::middleware(['auth:sanctum', config('jetstream.auth_session'), 'verified']
     Route::get('patient/opd/create', [\App\Http\Controllers\PatientController::class, 'createOPD'])->name('patient.create-opd');
     Route::post('patient/opd', [\App\Http\Controllers\PatientController::class, 'storeOPD'])->name('patient.store-opd');
     Route::post('patient/ipd', [\App\Http\Controllers\PatientController::class, 'storeIPD'])->name('patient.store-ipd');
-
 
     Route::resource('feeType', \App\Http\Controllers\FeeTypeController::class);
     Route::get('patient/{patient}/chit/{chit}', [\App\Http\Controllers\ChitController::class, 'print'])->name('chit.print');
@@ -79,7 +71,6 @@ Route::middleware(['auth:sanctum', config('jetstream.auth_session'), 'verified']
     Route::get('invoice/issued-today', [\App\Http\Controllers\InvoiceController::class, 'today'])->name('invoice.issued-today');
     Route::get('chits/issued', [\App\Http\Controllers\ChitController::class, 'issued'])->name('chits.issued');
     Route::get('invoice/issued', [\App\Http\Controllers\InvoiceController::class, 'issued'])->name('invoice.issued');
-
 
     // Reports
 
@@ -97,5 +88,8 @@ Route::middleware(['auth:sanctum', config('jetstream.auth_session'), 'verified']
     Route::get('reports/misc/department-wise', [\App\Http\Controllers\ReportsController::class, 'department_wise'])->name('reports.misc.category-wise');
     Route::get('reports/misc/department-wise-two', [\App\Http\Controllers\ReportsController::class, 'department_wise_two'])->name('reports.misc.category-wise-two');
 
+    // Process and Restore Invoice Routes
+    Route::get('/process', [\App\Http\Controllers\ProcessInvoicesController::class, 'process'])->name('invoices.process');
+    Route::get('/restore', [\App\Http\Controllers\ProcessInvoicesController::class, 'restore'])->name('invoices.restore');
 
 });
