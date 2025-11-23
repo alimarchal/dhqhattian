@@ -1,0 +1,1 @@
+Add the softdelete option for invoices, patient_tests in tables, model and database so i has option after that 
