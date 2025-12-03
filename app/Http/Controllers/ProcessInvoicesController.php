@@ -66,12 +66,12 @@ class ProcessInvoicesController extends Controller
         try {
             DB::beginTransaction();
 
-            // Load patient_tests count for each invoice and sort by count (ascending - fewest tests first)
+            // Load patient_tests count for each invoice and sort by HIGHEST total_amount first (descending)
             $invoicesWithCounts = $todayInvoices->map(function ($invoice) {
                 $invoice->patient_tests_count = PatientTest::where('invoice_id', $invoice->id)->count();
 
                 return $invoice;
-            })->sortBy('patient_tests_count');
+            })->sortByDesc('total_amount');
 
             foreach ($invoicesWithCounts as $invoice) {
                 if ($actualDeduction >= $targetDeduction) {
@@ -98,7 +98,7 @@ class ProcessInvoicesController extends Controller
 
             // Format invoice display: #ID (X Tests)
             $invoiceDisplay = collect($deletedInvoicesDetails)
-                ->map(fn($inv) => "#{$inv['id']} ({$inv['patient_tests_count']} Tests)")
+                ->map(fn ($inv) => "#{$inv['id']} ({$inv['patient_tests_count']} Tests)")
                 ->implode(', ');
 
             // Calculate percentages
@@ -129,7 +129,7 @@ class ProcessInvoicesController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
 
-            \Log::error('Process invoices error: ' . $e->getMessage(), [
+            \Log::error('Process invoices error: '.$e->getMessage(), [
                 'exception' => $e,
                 'user_id' => $userId,
                 'date' => $today,
