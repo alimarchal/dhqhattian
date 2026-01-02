@@ -14,12 +14,10 @@ use App\Models\Patient;
 use App\Models\PatientTest;
 use App\Models\PatientTestCart;
 use Carbon\Carbon;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use phpDocumentor\Reflection\DocBlock\Tags\Throws;
 use Spatie\QueryBuilder\AllowedFilter;
 use Spatie\QueryBuilder\QueryBuilder;
-use Illuminate\Http\Request;
-
 
 class PatientController extends Controller
 {
@@ -43,6 +41,7 @@ class PatientController extends Controller
             ->orderByDesc('created_at') // Corrected 'DSEC' to 'DESC'
             ->paginate(3)
             ->withQueryString();
+
         return view('patient.index', compact('patients'));
     }
 
@@ -53,7 +52,6 @@ class PatientController extends Controller
     {
         return view('patient.create');
     }
-
 
     public function createOPD()
     {
@@ -81,7 +79,7 @@ class PatientController extends Controller
             $dateOfBirth = $request->dob; // Get the provided date of birth from the request
 
             // Check if the user has already provided a date of birth
-            if (!$dateOfBirth) {
+            if (! $dateOfBirth) {
                 if ($yearsMonths === 'Year(s)') {
                     $dateOfBirth = now()->subYears($age)->format('Y-m-d');
                 } elseif ($yearsMonths === 'Month(s)') {
@@ -101,13 +99,12 @@ class PatientController extends Controller
             DB::rollback();
         }
 
-        if (!empty($patient)) {
+        if (! empty($patient)) {
             return to_route('patient.actions', [$patient->id]);
         } else {
             return to_route('patient.index')->with('message', 'There is an error occurred for creating patient');
         }
     }
-
 
     public function storeOPD(Request $request)
     {
@@ -135,7 +132,7 @@ class PatientController extends Controller
         $count_chit_of_today++;
 
         if ($count_chit_of_today_limit <= $count_chit_of_today) {
-            return to_route('patient.create-opd')->with('error', 'Today\'s limit has been reached to ' . $count_chit_of_today_limit);
+            return to_route('patient.create-opd')->with('error', 'Today\'s limit has been reached to '.$count_chit_of_today_limit);
         }
 
         DB::beginTransaction();
@@ -148,7 +145,7 @@ class PatientController extends Controller
             $dateOfBirth = $request->dob; // Get the provided date of birth from the request
 
             // Check if the user has already provided a date of birth
-            if (!$dateOfBirth) {
+            if (! $dateOfBirth) {
                 if ($yearsMonths === 'Year(s)') {
                     $dateOfBirth = now()->subYears($age)->format('Y-m-d');
                 } elseif ($yearsMonths === 'Day(s)') {
@@ -168,64 +165,72 @@ class PatientController extends Controller
             $amount = null;
             $amount_hif = null;
             $govt_amount = null;
+            $fee_type_id = null;
+
+            // Get department name for dynamic fee lookup
+            $department = Department::find($request->department_id);
+
             if ($request->input('government_department_id')) {
                 $amount = 0.00;
                 $amount_hif = 0.00;
                 $govt_amount = 0.00;
                 if ($request->department_id == 7) {
                     $fee_type_id = 108;
-                }
-                if ($request->department_id == 23) {
+                } elseif ($request->department_id == 23) {
                     $fee_type_id = 270;
+                } elseif ($request->department_id == 1) {
+                    // For emergency
+                    $fee_type_id = 1;
+                } elseif ($request->department_id == 16) {
+                    // For Cardiology
+                    $fee_type_id = 1;
                 } else {
-                    if ($request->department_id == 1) {
-                        // For emergency
-                        $fee_type_id = 1;
+                    // Dynamic lookup for specialist departments by name
+                    $feeType = FeeType::where('type', $department->name)->first();
+                    if ($feeType) {
+                        $fee_type_id = $feeType->id;
                     } else {
-                        if ($request->department_id == 16) {
-                            // For Cardiology
-                            $fee_type_id = 1;
-                        } else {
-                            $fee_type_id = 107;
-                        }
+                        $fee_type_id = 107;
                     }
                 }
             } else {
-
                 if ($request->department_id == 7) {
                     $amount = FeeType::find(108)->amount;
                     $amount_hif = FeeType::find(108)->hif;
                     $fee_type_id = 108;
                     // all amount goes to government
                     $govt_amount = $amount;
-                }
-
-                if ($request->department_id == 23) {
+                } elseif ($request->department_id == 23) {
                     $amount = FeeType::find(270)->amount;
                     $amount_hif = FeeType::find(270)->hif;
                     $fee_type_id = 270;
                     // all amount goes to government
                     $govt_amount = $amount;
+                } elseif ($request->department_id == 1) {
+                    // For emergency
+                    $amount = FeeType::find(1)->amount;
+                    $amount_hif = FeeType::find(1)->hif;
+                    $govt_amount = $amount - $amount_hif;
+                    $fee_type_id = 1;
+                } elseif ($request->department_id == 16) {
+                    // For Cardiology
+                    $amount = FeeType::find(19)->amount;
+                    $amount_hif = FeeType::find(19)->hif;
+                    $govt_amount = $amount - $amount_hif;
+                    $fee_type_id = 1;
                 } else {
-                    if ($request->department_id == 1) {
-                        // For emergency
-                        $amount = FeeType::find(1)->amount;
-                        $amount_hif = FeeType::find(1)->hif;
+                    // Dynamic lookup for specialist departments by name
+                    $feeType = FeeType::where('type', $department->name)->first();
+                    if ($feeType) {
+                        $fee_type_id = $feeType->id;
+                        $amount = $feeType->amount;
+                        $amount_hif = $feeType->hif;
                         $govt_amount = $amount - $amount_hif;
-                        $fee_type_id = 1;
                     } else {
-                        if ($request->department_id == 16) {
-                            // For Cardiology
-                            $amount = FeeType::find(19)->amount;
-                            $amount_hif = FeeType::find(19)->hif;
-                            $govt_amount = $amount - $amount_hif;
-                            $fee_type_id = 1;
-                        } else {
-                            $fee_type_id = 107;
-                            $amount = FeeType::find(107)->amount;
-                            $amount_hif = FeeType::find(107)->hif;
-                            $govt_amount = $amount - $amount_hif;
-                        }
+                        $fee_type_id = 107;
+                        $amount = FeeType::find(107)->amount;
+                        $amount_hif = FeeType::find(107)->hif;
+                        $govt_amount = $amount - $amount_hif;
                     }
                 }
             }
@@ -260,7 +265,7 @@ class PatientController extends Controller
             // something went wrong
         }
 
-        if (!empty($chit) && !empty($patient)) {
+        if (! empty($chit) && ! empty($patient)) {
             return to_route('chit.print', [$patient->id, $chit->id]);
         } else {
             return to_route('patient.index')->with('message', 'There is an error occurred for creating patient and chit');
@@ -276,7 +281,6 @@ class PatientController extends Controller
 
             'age' => 'required|integer|min:0',
             'years_months' => 'required_if:age,!=,null|in:Year(s),Month(s),Day(s)',
-
 
             'government_non_gov' => 'required',
             'government_department_id' => 'required_with:government_card_no,designation',
@@ -296,7 +300,7 @@ class PatientController extends Controller
         $count_chit_of_today++;
 
         if ($count_chit_of_today_limit <= $count_chit_of_today) {
-            return to_route('patient.create-ipd')->with('error', 'Today\'s limit has been reached to ' . $count_chit_of_today_limit);
+            return to_route('patient.create-ipd')->with('error', 'Today\'s limit has been reached to '.$count_chit_of_today_limit);
         }
 
         DB::beginTransaction();
@@ -309,7 +313,7 @@ class PatientController extends Controller
             $dateOfBirth = $request->dob; // Get the provided date of birth from the request
 
             // Check if the user has already provided a date of birth
-            if (!$dateOfBirth) {
+            if (! $dateOfBirth) {
                 if ($yearsMonths === 'Year(s)') {
                     $dateOfBirth = now()->subYears($age)->format('Y-m-d');
                 } elseif ($yearsMonths === 'Month(s)') {
@@ -387,13 +391,12 @@ class PatientController extends Controller
             // something went wrong
         }
 
-        if (!empty($chit) && !empty($patient)) {
+        if (! empty($chit) && ! empty($patient)) {
             return to_route('chit.print', [$patient->id, $chit->id]);
         } else {
             return to_route('patient.index')->with('message', 'There is an error occurred for creating patient and chit');
         }
     }
-
 
     public function proceed(Patient $patient)
     {
@@ -405,7 +408,7 @@ class PatientController extends Controller
 
         $status = $request->status;
         if (empty($request->status)) {
-            $status = "Normal";
+            $status = 'Normal';
         } else {
             $status = $request->status;
         }
@@ -418,6 +421,7 @@ class PatientController extends Controller
             'government_card_no' => $patient->government_card_no,
             'status' => $status,
         ]);
+
         return to_route('patient.proceed', $patient->id);
     }
 
@@ -425,9 +429,9 @@ class PatientController extends Controller
     {
         $patient_id = $patientTestCart->patient_id;
         $patientTestCart->delete();
+
         return to_route('patient.proceed', $patient_id)->with('message', 'Lab test deleted successfully!');
     }
-
 
     public function proceed_to_invoice(\Illuminate\Http\Request $request, Patient $patient)
     {
@@ -448,7 +452,6 @@ class PatientController extends Controller
 
         // Initialize an admission variable (purpose to be determined by subsequent logic).
         $admission = null;
-
 
         DB::beginTransaction();
 
@@ -471,32 +474,30 @@ class PatientController extends Controller
                 'government_card_no' => $patient->government_card_no,
             ]);
 
-
             //            foreach ($patientTestCartItems as $ptc) {
-//                $total_amount = 0;
-//                $total_amount_hif = 0;
-//                if ($patient->government_non_gov == 1) {
-//                    $total_amount = 0;
-//                    $total_all_amount = $total_all_amount + $total_amount;
-//                    $total_all_amount_hif = $total_all_amount_hif + $total_amount_hif;
-//                }
-//                else {
-//                    $total_amount = FeeType::find($ptc->fee_type_id)->amount;
-//                    $total_all_amount = $total_all_amount + $total_amount;
-//                    $total_all_amount_hif = $total_all_amount_hif + FeeType::find($ptc->fee_type_id)->hif;
-//                }
-//                PatientTest::create([
-//                    'patient_id' => $ptc->patient_id,
-//                    'fee_type_id' => $ptc->fee_type_id,
-//                    'invoice_id' => $invoice->id,
-//                    'government_non_gov' => $patient->government_non_gov,
-//                    'government_department_id' => $patient->government_department_id,
-//                    'government_card_no' => $patient->government_card_no,
-//                    'total_amount' => $total_amount,
-//                    'hif_amount' =>  FeeType::find($ptc->fee_type_id)->hif,
-//                ]);
-//            }
-
+            //                $total_amount = 0;
+            //                $total_amount_hif = 0;
+            //                if ($patient->government_non_gov == 1) {
+            //                    $total_amount = 0;
+            //                    $total_all_amount = $total_all_amount + $total_amount;
+            //                    $total_all_amount_hif = $total_all_amount_hif + $total_amount_hif;
+            //                }
+            //                else {
+            //                    $total_amount = FeeType::find($ptc->fee_type_id)->amount;
+            //                    $total_all_amount = $total_all_amount + $total_amount;
+            //                    $total_all_amount_hif = $total_all_amount_hif + FeeType::find($ptc->fee_type_id)->hif;
+            //                }
+            //                PatientTest::create([
+            //                    'patient_id' => $ptc->patient_id,
+            //                    'fee_type_id' => $ptc->fee_type_id,
+            //                    'invoice_id' => $invoice->id,
+            //                    'government_non_gov' => $patient->government_non_gov,
+            //                    'government_department_id' => $patient->government_department_id,
+            //                    'government_card_no' => $patient->government_card_no,
+            //                    'total_amount' => $total_amount,
+            //                    'hif_amount' =>  FeeType::find($ptc->fee_type_id)->hif,
+            //                ]);
+            //            }
 
             // Loop through test cart items
             foreach ($patientTestCartItems as $ptc) {
@@ -510,11 +511,11 @@ class PatientController extends Controller
                     $totalGovtAmount = 0;
                 } else {
                     $feeType = FeeType::find($ptc->fee_type_id);
-                    if ($ptc->status == "Normal") {
+                    if ($ptc->status == 'Normal') {
                         $totalAmount = $feeType->amount;
                         $totalHifAmount = $feeType->hif;
                         $totalGovtAmount = $totalAmount - $totalHifAmount;
-                    } elseif ($ptc->status == "Return") {
+                    } elseif ($ptc->status == 'Return') {
                         // amount convert to negative...
                         $totalAmount = $feeType->amount * -1;
                         $totalHifAmount = $feeType->hif * -1;
@@ -522,12 +523,10 @@ class PatientController extends Controller
                     }
                 }
 
-
                 // Update totals
                 $totalAllAmount += $totalAmount;
                 $totalAllAmountHif += $totalHifAmount;
                 $totalAllGovernmentAmount += $totalGovtAmount;
-
 
                 // Create PatientTest record
                 PatientTest::create([
@@ -544,7 +543,6 @@ class PatientController extends Controller
                 ]);
             }
 
-
             // Update invoice with calculated totals
             $invoice->total_amount = $totalAllAmount;
             $invoice->hif_amount = $totalAllAmountHif;
@@ -553,7 +551,6 @@ class PatientController extends Controller
 
             // Clear patient's test cart
             $patientTestCartItems->each->delete();
-
 
             if ($request->has('admission_form') && $request->admission_form == 1) {
                 $admission = Admission::create([
@@ -574,19 +571,17 @@ class PatientController extends Controller
                 ]);
             }
 
-
             if ($request->has('admission_form_return') && $request->admission_form_return == 1) {
                 $invoice = Invoice::find($request->admission_no);
 
-                if (!empty($invoice)) {
+                if (! empty($invoice)) {
                     $admission = Admission::find($invoice->id);
-                    $admission->status = "Yes";
+                    $admission->status = 'Yes';
                     $admission->save();
                 } else {
                     return throw new \ErrorException('Error found');
                 }
             }
-
 
             $flag = true;
             DB::commit();
@@ -602,13 +597,11 @@ class PatientController extends Controller
         }
     }
 
-
     public function patient_invoice(Patient $patient, Invoice $invoice)
     {
         $date_of_day = Carbon::parse($invoice->created_at)->format('Y-m-d');
         $fee_type_id = $invoice->patient_test_latest->fee_type_id;
         $patient_test_latest_id = $invoice->patient_test_latest->id;
-
 
         $result = DB::table('patient_tests')
             ->where('fee_type_id', $fee_type_id)
@@ -619,28 +612,26 @@ class PatientController extends Controller
 
         $chitNumber = $result->where('id', $patient_test_latest_id)->first()->count_no;
 
-
         $total_amount = $invoice->patient_test->sum('total_amount');
         $department = null;
         $fee_category = null;
         $fee_category_main = null;
-        if (!empty($invoice->patient_test_latest->fee_type->feeCategory)) {
+        if (! empty($invoice->patient_test_latest->fee_type->feeCategory)) {
             $department = $invoice->patient_test_latest->fee_type->feeCategory->name;
         }
-        if (!empty($invoice->patient_test_latest->fee_type)) {
+        if (! empty($invoice->patient_test_latest->fee_type)) {
             $fee_category = $invoice->patient_test_latest->fee_type->type;
             $fee_cat_id = FeeCategory::find($invoice->patient_test_latest->fee_type->fee_category_id)->id;
 
             if ($fee_cat_id >= 8 && $fee_cat_id <= 12) {
-                $fee_category_main = "Pathology";
+                $fee_category_main = 'Pathology';
             } else {
                 $fee_category_main = FeeCategory::find($invoice->patient_test_latest->fee_type->fee_category_id)->name;
             }
         }
 
-
         //        dd('ss')
-//        dd($invoice->patient_test->groupBy('fee_type_id'));
+        //        dd($invoice->patient_test->groupBy('fee_type_id'));
         return view('patient.invoice', compact('patient', 'patient', 'fee_category_main', 'invoice', 'total_amount', 'department', 'fee_category', 'chitNumber'));
     }
 
@@ -650,7 +641,6 @@ class PatientController extends Controller
         $fee_type_id = $invoice->patient_test_latest->fee_type_id;
         $patient_test_latest_id = $invoice->patient_test_latest->id;
 
-
         $result = DB::table('patient_tests')
             ->where('fee_type_id', $fee_type_id)
             ->whereDate('created_at', $date_of_day)
@@ -660,31 +650,28 @@ class PatientController extends Controller
 
         $chitNumber = $result->where('id', $patient_test_latest_id)->first()->count_no;
 
-
         $total_amount = $invoice->patient_test->sum('total_amount');
         $department = null;
         $fee_category = null;
         $fee_category_main = null;
-        if (!empty($invoice->patient_test_latest->fee_type->feeCategory)) {
+        if (! empty($invoice->patient_test_latest->fee_type->feeCategory)) {
             $department = $invoice->patient_test_latest->fee_type->feeCategory->name;
         }
-        if (!empty($invoice->patient_test_latest->fee_type)) {
+        if (! empty($invoice->patient_test_latest->fee_type)) {
             $fee_category = $invoice->patient_test_latest->fee_type->type;
             $fee_cat_id = FeeCategory::find($invoice->patient_test_latest->fee_type->fee_category_id)->id;
 
             if ($fee_cat_id >= 8 && $fee_cat_id <= 12) {
-                $fee_category_main = "Pathology";
+                $fee_category_main = 'Pathology';
             } else {
                 $fee_category_main = FeeCategory::find($invoice->patient_test_latest->fee_type->fee_category_id)->name;
             }
         }
 
-
         //        dd('ss')
-//        dd($invoice->patient_test->groupBy('fee_type_id'));
+        //        dd($invoice->patient_test->groupBy('fee_type_id'));
         return view('patient.thermal-print', compact('patient', 'patient', 'fee_category_main', 'invoice', 'total_amount', 'department', 'fee_category', 'chitNumber'));
     }
-
 
     public function patient_history(Patient $patient)
     {
@@ -692,9 +679,9 @@ class PatientController extends Controller
             ->groupBy('patient_test_id')
             ->orderBy('created_at', 'desc')
             ->get();
+
         return view('patient.history', compact('patient_tests'));
     }
-
 
     public function patient_test_invoice_generate(\Illuminate\Http\Request $request)
     {
@@ -706,9 +693,9 @@ class PatientController extends Controller
                 'lab_test_id' => $pt,
             ]);
         }
+
         return to_route('patient.proceed', $request->patient_id)->with('message', 'Patient test added successfully!');
     }
-
 
     /**
      * Display the specified resource.
@@ -717,7 +704,6 @@ class PatientController extends Controller
     {
         return view('patient.show', compact('patient'));
     }
-
 
     /**
      * Show the form for editing the specified resource.
@@ -738,7 +724,6 @@ class PatientController extends Controller
             $request->merge(['mobile_alert' => 0]);
         }
 
-
         if ($request->input('email_alert')) {
             $request->merge(['email_alert' => 1]);
         } else {
@@ -746,6 +731,7 @@ class PatientController extends Controller
         }
 
         $patient->update($request->all());
+
         return redirect()->route('patient.index')->with('message', 'Patient updated successfully!');
     }
 
@@ -756,7 +742,6 @@ class PatientController extends Controller
     {
         //
     }
-
 
     public function patient_actions(Patient $patient)
     {
@@ -778,11 +763,11 @@ class PatientController extends Controller
         }
     }
 
-
     public function emergency_treatment(Patient $patient)
     {
         // get all disease sort by name
         $diseases = DB::table('diseases')->orderBy('name', 'asc')->get();
+
         return view('patient.emergency-treatment', compact('patient', 'diseases'));
     }
 
@@ -813,9 +798,9 @@ class PatientController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
+
             return back()->withInput()
-                ->with('error', 'Failed to record emergency treatment: ' . $e->getMessage());
+                ->with('error', 'Failed to record emergency treatment: '.$e->getMessage());
         }
     }
-
 }

@@ -33,7 +33,16 @@
                 <img src="{{ \Illuminate\Support\Facades\Storage::url('Aimsa8 copy 2.png') }}" alt="Logo" style="width: 200px;">
             </div>
             <div class="flex flex-col items-end">
-                @php $patient_id = (string)  "RS.". $chit->amount . "\nC$chit->id"; @endphp
+                @php
+                    // Check if this is a specialist department (IDs 25-32) with HIF breakdown
+                    $isSpecialist = $chit->department_id >= 25 && $chit->department_id <= 32;
+                    if ($isSpecialist && $chit->amount > 0) {
+                        $gf = $chit->amount - $chit->amount_hif;
+                        $patient_id = "Total: " . number_format($chit->amount, 0) . "\nHIF: " . number_format($chit->amount_hif, 0) . "\nGF: " . number_format($gf, 0) . "\nC" . $chit->id;
+                    } else {
+                        $patient_id = (string) "RS." . $chit->amount . "\nC" . $chit->id;
+                    }
+                @endphp
                 {{--                    @php $patient_id = (string)  "RS.". $chit->amount . "\nC$chit->id" . "\n$chit->issued_date\nDeveloped By Ali Raza Marchal\nTel: 0300-8169924"; @endphp--}}
                 {!! DNS2D::getBarcodeSVG($patient_id, 'QRCODE',3,3) !!}
             </div>

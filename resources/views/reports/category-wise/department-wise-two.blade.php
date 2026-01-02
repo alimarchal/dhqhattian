@@ -175,9 +175,8 @@
                                         <td class="border-black border px-4 py-2">{{ $fee_type->type }}</td>
 
                                         <td class="border-black border px-4 py-2 text-center print:hidden">
-
-
-                                            @if($fee_type->id == 1 || $fee_type->id == 19 || $fee_type->id == 107 || $fee_type->id == 108)
+                                            {{-- Fee category 13 = Chit-based fees (includes specialists), also IDs 1, 19 are special chit fees --}}
+                                            @if($fee_type->fee_category_id == 13 || $fee_type->id == 1 || $fee_type->id == 19)
                                                 @if(request()->has('start_date'))
                                                     <a href="{{ route('chits.issued',['start_date' => request()->input('start_date'), 'end_date' => request()->input('end_date'), 'filter[government_non_gov]' => 1, 'filter[fee_type_id]' => $data['fee_type_id']]) }}"
                                                        class="text-blue-500 hover:underline">
@@ -189,9 +188,7 @@
                                                         {{ $data['Entitled'] }}
                                                     </a>
                                                 @endif
-
                                             @else
-
                                                 @if(request()->has('start_date'))
                                                     <a href="{{ route('invoice.issued',['start_date' => request()->input('start_date'), 'end_date' => request()->input('end_date'), 'filter[government_non_government]' => 1, 'filter[patient_test.fee_type_id]' => $data['fee_type_id']]) }}"
                                                        class="text-blue-500 hover:underline">
@@ -204,13 +201,10 @@
                                                     </a>
                                                 @endif
                                             @endif
-
-
                                         </td>
                                         <td class="border-black border px-4 py-2 text-center print:hidden">
-
-
-                                            @if($fee_type->id == 1 || $fee_type->id == 19 || $fee_type->id == 107 || $fee_type->id == 108)
+                                            {{-- Fee category 13 = Chit-based fees (includes specialists), also IDs 1, 19 are special chit fees --}}
+                                            @if($fee_type->fee_category_id == 13 || $fee_type->id == 1 || $fee_type->id == 19)
                                                 @if(request()->has('start_date'))
                                                     <a href="{{ route('chits.issued',['start_date' => request()->input('start_date'), 'end_date' => request()->input('end_date'), 'filter[government_non_gov]' => 0, 'filter[fee_type_id]' => $data['fee_type_id']]) }}"
                                                        class="text-blue-500 hover:underline">
@@ -235,10 +229,8 @@
                                                     </a>
                                                 @endif
                                             @endif
-
-
                                         </td>
-                                        {{--                                     Returned --}}
+                                        {{-- Returned --}}
                                         <td class="border-black border px-4 py-2 text-center print:hidden">
                                             {{ $data['Return Entitled'] }}
                                         </td>
@@ -251,7 +243,7 @@
 
                                         <td class="border-black border px-4 py-2 text-right print:hidden">{{ number_format($data['HIF'],2) }}</td>
                                         <td class="border-black border px-4 py-2 text-right">{{ number_format($data['GOVT'],2) }}</td>
-                                        <td class="border-black border px-4 py-2 text-right">{{ number_format($data['GOVT'],2) }}</td>
+                                        <td class="border-black border px-4 py-2 text-right">{{ number_format($data['TOTAL'],2) }}</td>
                                         @php
                                             $return_ent += $data['Return Entitled'];
                                             $return_non_ent += $data['Return Non Entitled'];
@@ -332,9 +324,8 @@
                                         <td class="border-black border px-4 py-2">{{ $fee_type->type }}</td>
 
                                         <td class="border-black border px-4 py-2 text-center print:hidden">
-
-
-                                            @if($fee_type->id == 1 || $fee_type->id == 19 || $fee_type->id == 107 || $fee_type->id == 108)
+                                            {{-- Fee category 13 = Chit-based fees (includes specialists), also IDs 1, 19 are special chit fees --}}
+                                            @if($fee_type->fee_category_id == 13 || $fee_type->id == 1 || $fee_type->id == 19)
                                                 @if(request()->has('start_date'))
                                                     <a href="{{ route('chits.issued',['start_date' => request()->input('start_date'), 'end_date' => request()->input('end_date'), 'filter[government_non_gov]' => 1, 'filter[fee_type_id]' => $data['fee_type_id']]) }}"
                                                        class="text-blue-500 hover:underline">
@@ -346,9 +337,7 @@
                                                         {{ $data['Entitled'] }}
                                                     </a>
                                                 @endif
-
                                             @else
-
                                                 @if(request()->has('start_date'))
                                                     <a href="{{ route('invoice.issued',['start_date' => request()->input('start_date'), 'end_date' => request()->input('end_date'), 'filter[government_non_government]' => 1, 'filter[patient_test.fee_type_id]' => $data['fee_type_id']]) }}"
                                                        class="text-blue-500 hover:underline">
@@ -361,13 +350,10 @@
                                                     </a>
                                                 @endif
                                             @endif
-
-
                                         </td>
                                         <td class="border-black border px-4 py-2 text-center print:hidden">
-
-
-                                            @if($fee_type->id == 1 || $fee_type->id == 19 || $fee_type->id == 107 || $fee_type->id == 108)
+                                            {{-- Fee category 13 = Chit-based fees (includes specialists), also IDs 1, 19 are special chit fees --}}
+                                            @if($fee_type->fee_category_id == 13 || $fee_type->id == 1 || $fee_type->id == 19)
                                                 @if(request()->has('start_date'))
                                                     <a href="{{ route('chits.issued',['start_date' => request()->input('start_date'), 'end_date' => request()->input('end_date'), 'filter[government_non_gov]' => 0, 'filter[fee_type_id]' => $data['fee_type_id']]) }}"
                                                        class="text-blue-500 hover:underline">
@@ -392,10 +378,8 @@
                                                     </a>
                                                 @endif
                                             @endif
-
-
                                         </td>
-                                        {{--                                     Returned --}}
+                                        {{-- Returned --}}
                                         <td class="border-black border px-4 py-2 text-center print:hidden">
                                             {{ $data['Return Entitled'] }}
                                         </td>

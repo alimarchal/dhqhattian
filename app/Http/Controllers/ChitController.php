@@ -31,7 +31,6 @@ class ChitController extends Controller
         return view('chit.issue_new_chit', compact('patient'));
     }
 
-
     public function issue_new_chit_store(Request $request, Patient $patient)
     {
         $request->validate([
@@ -42,8 +41,7 @@ class ChitController extends Controller
             'department_id' => 'required',
         ]);
 
-
-//        dd($request->all());
+        //        dd($request->all());
 
         // login user id capture
         $request->merge(['user_id' => auth()->user()->id]);
@@ -53,7 +51,7 @@ class ChitController extends Controller
         $chit = null;
         // 46 >= 51
         if ($count_chit_of_today_limit <= $count_chit_of_today) {
-            return to_route('patient.create')->with('error', 'OPD today\'s limit has been reached to maximum limit of ' . $count_chit_of_today_limit . ' as assigned by OPD.');
+            return to_route('patient.create')->with('error', 'OPD today\'s limit has been reached to maximum limit of '.$count_chit_of_today_limit.' as assigned by OPD.');
         }
 
         DB::beginTransaction();
@@ -64,85 +62,77 @@ class ChitController extends Controller
             $ipd_opd = $request->ipd_opd;
             $amount_hif = 0;
             $govt_amount = 0;
+
+            // Get department name for dynamic fee lookup
+            $department = Department::find($request->department_id);
+
             if ($request->input('government_department_id')) {
                 $amount = 0.00;
                 $amount_hif = 0.00;
                 $govt_amount = 0.00;
                 if ($request->department_id == 7) {
-                    $fee_type_id = FeeType::find(108)->id;
-                    $amount = FeeType::find(108)->amount;
-                    $amount_hif = FeeType::find(108)->hif;
-                    $govt_amount = $amount - $amount_hif;
-                }
-                else {
-                    if ($request->department_id == 1) {
-                        $fee_type_id = FeeType::find(1)->id;
-                    }
-                    else {
-                        if ($request->department_id == 16) {
-                            $fee_type_id = FeeType::find(1)->id;
-                        }
-                        else {
-                            $fee_type_id = FeeType::find(107)->id;
-                        }
+                    $fee_type_id = 108;
+                } elseif ($request->department_id == 23) {
+                    $fee_type_id = 270;
+                } elseif ($request->department_id == 1) {
+                    $fee_type_id = 1;
+                } elseif ($request->department_id == 16) {
+                    $fee_type_id = 1;
+                } else {
+                    // Dynamic lookup for specialist departments by name
+                    $feeType = FeeType::where('type', $department->name)->first();
+                    if ($feeType) {
+                        $fee_type_id = $feeType->id;
+                    } else {
+                        $fee_type_id = 107;
                     }
                 }
-            }
-            else {
-
-
-
-
+            } else {
                 if ($request->department_id == 7) {
                     $amount = FeeType::find(108)->amount;
                     $amount_hif = FeeType::find(108)->hif;
                     $fee_type_id = 108;
                     // as all amount goes to government
                     $govt_amount = $amount;
-                }
-                else {
-
-                    if ($request->department_id == 1) {
-                        // For emergency
-                        $amount = FeeType::find(1)->amount;
-                        $amount_hif = FeeType::find(1)->hif;
-                        $fee_type_id = 1;
+                } elseif ($request->department_id == 23) {
+                    $amount = FeeType::find(270)->amount;
+                    $amount_hif = FeeType::find(270)->hif;
+                    $fee_type_id = 270;
+                    // all amount goes to government
+                    $govt_amount = $amount;
+                } elseif ($request->department_id == 1) {
+                    // For emergency
+                    $amount = FeeType::find(1)->amount;
+                    $amount_hif = FeeType::find(1)->hif;
+                    $fee_type_id = 1;
+                    $govt_amount = $amount - $amount_hif;
+                } elseif ($request->department_id == 16) {
+                    // For Cardiology
+                    $amount = FeeType::find(19)->amount;
+                    $amount_hif = FeeType::find(19)->hif;
+                    $fee_type_id = 1;
+                    $govt_amount = $amount - $amount_hif;
+                } else {
+                    // Dynamic lookup for specialist departments by name
+                    $feeType = FeeType::where('type', $department->name)->first();
+                    if ($feeType) {
+                        $fee_type_id = $feeType->id;
+                        $amount = $feeType->amount;
+                        $amount_hif = $feeType->hif;
                         $govt_amount = $amount - $amount_hif;
-                    }
-
-                    if ($request->department_id == 23) {
-                        $amount = FeeType::find(270)->amount;
-                        $amount_hif = FeeType::find(270)->hif;
-                        $fee_type_id = 270;
-                        // all amount goes to government
-                        $govt_amount = $amount;
-                    }
-
-
-                    else {
-                        if ($request->department_id == 16) {
-                            // For Cardiology
-                            $amount = FeeType::find(19)->amount;
-                            $amount_hif = FeeType::find(19)->hif;
-                            $fee_type_id = 1;
-                            $govt_amount = $amount - $amount_hif;
-                        }
-                        else {
-                            $fee_type_id = 107;
-                            $amount = FeeType::find(107)->amount;
-                            $amount_hif = FeeType::find(107)->hif;
-                            $govt_amount = $amount - $amount_hif;
-                        }
+                    } else {
+                        $fee_type_id = 107;
+                        $amount = FeeType::find(107)->amount;
+                        $amount_hif = FeeType::find(107)->hif;
+                        $govt_amount = $amount - $amount_hif;
                     }
                 }
             }
             if ($request->has('ipd_opd')) {
                 $ipd_opd = 0;
-            }
-            else {
+            } else {
                 $ipd_opd = 1;
             }
-
 
             // this is for opd and ipd
             $chit = Chit::create([
@@ -180,15 +170,14 @@ class ChitController extends Controller
         $issued_chits = null;
         if ($user->hasRole('Front Desk/Receptionist')) {
             $issued_chits = QueryBuilder::for(Chit::class)
-                ->allowedFilters(['patient_id', 'fee_type_id', 'government_department_id', 'issued_date', 'ipd_opd', 'government_card_no', AllowedFilter::exact('government_non_gov'), AllowedFilter::exact('id'), AllowedFilter::exact('department_id')],)
+                ->allowedFilters(['patient_id', 'fee_type_id', 'government_department_id', 'issued_date', 'ipd_opd', 'government_card_no', AllowedFilter::exact('government_non_gov'), AllowedFilter::exact('id'), AllowedFilter::exact('department_id')])
                 ->where('user_id', $user->id)->whereDate('issued_date', Carbon::today())
 //                ->where('user_id', $user->id)->where('ipd_opd', 1)->whereDate('issued_date', Carbon::today())
 //                ->orderByDesc('created_at') // Corrected 'DSEC' to 'DESC'
                 ->paginate(500);
-        }
-        elseif ($user->hasRole(['Administrator'])) {
+        } elseif ($user->hasRole(['Administrator'])) {
             $issued_chits = QueryBuilder::for(Chit::class)
-                ->allowedFilters(['patient_id', 'fee_type_id', 'government_department_id', 'issued_date', 'ipd_opd', 'government_card_no', AllowedFilter::exact('government_non_gov'), AllowedFilter::exact('id'), AllowedFilter::exact('department_id')],)
+                ->allowedFilters(['patient_id', 'fee_type_id', 'government_department_id', 'issued_date', 'ipd_opd', 'government_card_no', AllowedFilter::exact('government_non_gov'), AllowedFilter::exact('id'), AllowedFilter::exact('department_id')])
                 ->whereDate('issued_date', Carbon::today())
 //                ->orderByDesc('created_at') // Corrected 'DSEC' to 'DESC'
                 ->paginate(1000);
@@ -197,15 +186,13 @@ class ChitController extends Controller
         return view('chit.today', compact('issued_chits'));
     }
 
-
     public function issued(Request $request)
     {
         $start_date = Carbon::parse($request->start_date)->format('Y-m-d');
         $end_date = Carbon::parse($request->end_date)->format('Y-m-d');
 
-        $date_start_at = $start_date . ' 00:00:00';
-        $date_end_at = $end_date . ' 23:59:59';
-
+        $date_start_at = $start_date.' 00:00:00';
+        $date_end_at = $end_date.' 23:59:59';
 
         $user = \Auth::user();
         $issued_chits = null;
@@ -221,12 +208,13 @@ class ChitController extends Controller
                     AllowedFilter::exact('patient.sex'),
                     AllowedFilter::exact('user_id'),
                     'government_department_id',
-                    'issued_date'
+                    'issued_date',
                 ])
                 ->whereBetween('created_at', [$date_start_at, $date_end_at])
                 ->orderBy('created_at') // Corrected 'DSEC' to 'DESC'
                 ->paginate(100000)->withQueryString();
         }
+
         return view('chit.issued', compact('issued_chits'));
     }
 
@@ -254,7 +242,6 @@ class ChitController extends Controller
         //
     }
 
-
     public function print(Patient $patient, Chit $chit)
     {
         $date_of_day = Carbon::parse($chit->issued_date)->format('Y-m-d');
@@ -267,9 +254,9 @@ class ChitController extends Controller
             ->get();
 
         $chitNumber = $result->where('id', $chit->id)->first()->count_no;
+
         return view('chit.print', compact('chit', 'patient', 'chitNumber'));
     }
-
 
     /**
      * Show the form for editing the specified resource.
