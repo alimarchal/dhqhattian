@@ -1,8 +1,7 @@
-Create SoftDelete options for invoices, patient_tests in model and new migrations
-add two routes 1 is /process and other is restore
-when we add the /process then from randomly check the invoices of the user id 35 of the same date for example if i press the /process url from route then check today date according to system and check the invoices total_amount here is catch 
+make a new seeder here is description of fee_types table
+Field Type Null Key Default Extra id bigint(20) unsigned NO PRI NULL auto_increment fee_category_id bigint(20) unsigned NO MUL NULL type varchar(255) YES NULL amount decimal(14,2) NO NULL hif decimal(14,2) NO 0.00 status enum('Normal','Return Fee') NO Normal created_at timestamp YES NULL updated_at timestamp YES NULL
 
-if randomly selected invoice of user_id 35 (only 35) of that same day from invoices table using user_id 35  
-first sum the total_amount if (total_amount) > 15000 and less then 20000 then then deleted those invoice whose all sum is 2000 (soft delete) and it's realted patient_tests (you can check via invoice_id) make sure both scenerio should be compalted using a transaction if randomly selected invoice of user_id 35 (only 35)
- total_amount of that day is greater then 22000 then 3000 then  deleted those invoice whose all sum is 2000 (soft delete) when done only echo the message 
- in two Total Deduction: XXXX
+for it is auto increment for all for fee_category_id use 13 as for all for type get all types form this seeder /Users/alirazamarhcal/Herd/dhqhattian/database/seeders/DepartmentSeeder.php copy the name from this
+
+and use it in type for amount use the amount 50, and hif use use 20
+`
