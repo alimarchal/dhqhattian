@@ -133,6 +133,13 @@
                         </select>
                     </div>
 
+                    <div class="flex items-center pt-7">
+                        <input type="checkbox" name="specialists_only" id="specialists_only" value="on"
+                            {{ request('specialists_only') == 'on' ? 'checked' : '' }}
+                            class="rounded border-gray-300">
+                        <label for="specialists_only" class="block text-gray-700 font-bold ml-2">Specialists Only</label>
+                    </div>
+
                     <div class="flex items-center justify-between mt-4 col-span-full">
                         <button
                             class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"

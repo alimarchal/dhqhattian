@@ -153,7 +153,13 @@ class ReportsController extends Controller
             $query->where('user_id', $request->user_id);
         }
 
-        $chits = $query->get()->sortBy(function ($chit) {
+        $chits = $query->get()->filter(function ($chit) use ($request) {
+            if ($request->specialists_only == 'on') {
+                return str_contains(strtolower($chit->department->name), 'specialist');
+            }
+
+            return true;
+        })->sortBy(function ($chit) {
             $isSpecialist = str_contains(strtolower($chit->department->name), 'specialist') ? 1 : 0;
 
             return [
