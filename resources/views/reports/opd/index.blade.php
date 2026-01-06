@@ -8,7 +8,8 @@
     <div class="py-6">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
             <div class="grid grid-cols-12 gap-6 ">
-                <a href="{{ route('reports.opd.reportDaily') }}" class="transform  hover:scale-105 transition duration-300 shadow-xl rounded-lg col-span-12 sm:col-span-6 xl:col-span-3 intro-y bg-white">
+                <a href="{{ route('reports.opd.reportDaily') }}"
+                    class="transform  hover:scale-105 transition duration-300 shadow-xl rounded-lg col-span-12 sm:col-span-6 xl:col-span-3 intro-y bg-white">
                     <div class="p-5">
                         <div class="grid grid-cols-3 gap-1">
                             <div class="col-span-2">
@@ -25,7 +26,26 @@
                         </div>
                     </div>
                 </a>
-               </div>
+
+                <a href="{{ route('reports.opd.user-wise') }}"
+                    class="transform  hover:scale-105 transition duration-300 shadow-xl rounded-lg col-span-12 sm:col-span-6 xl:col-span-3 intro-y bg-white">
+                    <div class="p-5">
+                        <div class="grid grid-cols-3 gap-1">
+                            <div class="col-span-2">
+                                <div class="text-3xl font-bold leading-8">
+                                    User Wise
+                                </div>
+                                <div class="mt-1 text-base  font-bold text-gray-600">
+                                    OPD Report
+                                </div>
+                            </div>
+                            <div class="col-span-1 flex items-center justify-end">
+                                <img src="{{ url('images/reports.png') }}" alt="User Wise Report" class="h-12 w-12">
+                            </div>
+                        </div>
+                    </div>
+                </a>
+            </div>
         </div>
     </div>
     @section('custom_script')

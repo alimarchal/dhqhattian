@@ -9,6 +9,7 @@ use App\Models\FeeCategory;
 use App\Models\FeeType;
 use App\Models\Invoice;
 use App\Models\PatientTest;
+use App\Models\User;
 use Carbon\Carbon;
 use DB;
 use Illuminate\Http\Request;
@@ -131,6 +132,42 @@ class ReportsController extends Controller
     public function opd()
     {
         return view('reports.opd.index');
+    }
+
+    public function reportOpdUserWise(Request $request)
+    {
+        $start_date = $request->start_date ? Carbon::parse($request->start_date)->format('Y-m-d') : now()->format('Y-m-d');
+        $end_date = $request->end_date ? Carbon::parse($request->end_date)->format('Y-m-d') : now()->format('Y-m-d');
+
+        $date_start_at = $start_date.' 00:00:00';
+        $date_end_at = $end_date.' 23:59:59';
+
+        $query = Chit::with(['user', 'patient', 'department'])
+            ->whereBetween('issued_date', [$date_start_at, $date_end_at]);
+
+        if ($request->department_id) {
+            $query->where('department_id', $request->department_id);
+        }
+
+        if ($request->user_id) {
+            $query->where('user_id', $request->user_id);
+        }
+
+        $chits = $query->get()->sortBy(function ($chit) {
+            $isSpecialist = str_contains(strtolower($chit->department->name), 'specialist') ? 1 : 0;
+
+            return [
+                $chit->user_id,
+                $isSpecialist,
+                $chit->department->name,
+                $chit->issued_date,
+            ];
+        });
+
+        $departments = Department::all();
+        $users = User::all();
+
+        return view('reports.opd.user-wise', compact('chits', 'start_date', 'end_date', 'departments', 'users'));
     }
 
     public function ipd()

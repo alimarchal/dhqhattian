@@ -76,6 +76,7 @@ Route::middleware(['auth:sanctum', config('jetstream.auth_session'), 'verified']
 
     Route::get('reports', [\App\Http\Controllers\ReportsController::class, 'index'])->name('reports.index');
     Route::get('reports/opd', [\App\Http\Controllers\ReportsController::class, 'opd'])->name('reports.opd');
+    Route::get('reports/opd/user-wise', [\App\Http\Controllers\ReportsController::class, 'reportOpdUserWise'])->name('reports.opd.user-wise');
     Route::get('reports/ipd', [\App\Http\Controllers\ReportsController::class, 'ipd'])->name('reports.ipd');
     Route::get('reports/opd/reports-daily', [\App\Http\Controllers\ReportsController::class, 'reportDaily'])->name('reports.opd.reportDaily');
     Route::get('reports/ipd/reports-daily', [\App\Http\Controllers\ReportsController::class, 'reportDailyIPD'])->name('reports.opd.reportDailyIPD');
