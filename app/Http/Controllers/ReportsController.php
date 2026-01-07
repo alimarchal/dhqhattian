@@ -188,19 +188,25 @@ class ReportsController extends Controller
         $query = Chit::with(['user', 'patient', 'department'])
             ->whereBetween('issued_date', [$date_start_at, $date_end_at]);
 
-        // Filter to only specialist departments
-        $chits = $query->get()->filter(function ($chit) {
-            return str_contains(strtolower($chit->department->name), 'specialist');
-        });
+        // Get all specialist departments
+        $specialistDepartments = Department::where('name', 'like', '%specialist%');
+
+        if ($request->department_id) {
+            $specialistDepartments->where('id', $request->department_id);
+        }
+
+        $specialistDepartments = $specialistDepartments->orderBy('name')->get();
+
+        $chits = $query->get();
 
         // Group by department and calculate statistics
-        $departmentStats = $chits->groupBy('department_id')->map(function ($departmentChits, $departmentId) {
-            $department = $departmentChits->first()->department;
+        $departmentStats = $specialistDepartments->map(function ($department) use ($chits) {
+            $departmentChits = $chits->where('department_id', $department->id);
 
             $totalPatients = $departmentChits->count();
             $entitledPatients = $departmentChits->where('government_non_gov', 1)->count();
             $nonEntitledPatients = $departmentChits->where('government_non_gov', 0)->count();
-            $totalFees = $departmentChits->sum('amount');
+            $totalFees = $departmentChits->sum('govt_amount');
 
             return [
                 'department' => $department,
@@ -209,7 +215,7 @@ class ReportsController extends Controller
                 'non_entitled_patients' => $nonEntitledPatients,
                 'total_fees' => $totalFees,
             ];
-        })->sortBy('department.name');
+        });
 
         // Calculate grand totals
         $grandTotals = [
