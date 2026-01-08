@@ -176,6 +176,54 @@ class ReportsController extends Controller
         return view('reports.opd.user-wise', compact('chits', 'start_date', 'end_date', 'departments', 'users'));
     }
 
+    public function reportOpdSpecialistFees(Request $request)
+    {
+        $start_date = $request->start_date ? Carbon::parse($request->start_date)->format('Y-m-d') : now()->format('Y-m-d');
+        $end_date = $request->end_date ? Carbon::parse($request->end_date)->format('Y-m-d') : now()->format('Y-m-d');
+
+        $date_start_at = $start_date.' 00:00:00';
+        $date_end_at = $end_date.' 23:59:59';
+
+        // Get all chits for the date range with relationships
+        $query = Chit::with(['user', 'patient', 'department'])
+            ->whereBetween('issued_date', [$date_start_at, $date_end_at]);
+
+        // Filter to only specialist departments
+        $chits = $query->get()->filter(function ($chit) {
+            return str_contains(strtolower($chit->department->name), 'specialist');
+        });
+
+        // Group by department and calculate statistics
+        $departmentStats = $chits->groupBy('department_id')->map(function ($departmentChits, $departmentId) {
+            $department = $departmentChits->first()->department;
+
+            $totalPatients = $departmentChits->count();
+            $entitledPatients = $departmentChits->where('government_non_gov', 1)->count();
+            $nonEntitledPatients = $departmentChits->where('government_non_gov', 0)->count();
+            $totalFees = $departmentChits->sum('amount');
+
+            return [
+                'department' => $department,
+                'total_patients' => $totalPatients,
+                'entitled_patients' => $entitledPatients,
+                'non_entitled_patients' => $nonEntitledPatients,
+                'total_fees' => $totalFees,
+            ];
+        })->sortBy('department.name');
+
+        // Calculate grand totals
+        $grandTotals = [
+            'total_patients' => $departmentStats->sum('total_patients'),
+            'entitled_patients' => $departmentStats->sum('entitled_patients'),
+            'non_entitled_patients' => $departmentStats->sum('non_entitled_patients'),
+            'total_fees' => $departmentStats->sum('total_fees'),
+        ];
+
+        $departments = Department::all();
+
+        return view('reports.opd.specialist-fees', compact('departmentStats', 'grandTotals', 'start_date', 'end_date', 'departments'));
+    }
+
     public function ipd()
     {
         return view('reports.ipd.index');
