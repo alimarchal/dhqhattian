@@ -324,14 +324,14 @@ class ReportsController extends Controller
 
             $fee_types = QueryBuilder::for(FeeType::class)
                 ->orderBy('fee_category_id')
-                ->orderByRaw('CASE WHEN status = "Normal" THEN 1 ELSE 2 END')
+                ->orderByRaw("CASE WHEN status = 'Normal' THEN 1 ELSE 2 END")
                 ->whereIn('fee_category_id', $fee_category_ids)
                 ->whereIn('status', $status)
                 ->get();
         } else {
             $fee_types = QueryBuilder::for(FeeType::class)
                 ->orderBy('fee_category_id')
-                ->orderByRaw('CASE WHEN status = "Normal" THEN 1 ELSE 2 END')
+                ->orderByRaw("CASE WHEN status = 'Normal' THEN 1 ELSE 2 END")
                 ->whereIn('status', $status)
                 ->get();
         }

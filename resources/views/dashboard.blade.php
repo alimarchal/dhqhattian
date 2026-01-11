@@ -701,7 +701,7 @@
                 },
                 labels: [
                     @foreach ($patient_test_daily_report as $key => $count)
-                        '{{ App\Models\FeeCategory::find($key)->name }} ({{ $count }})',
+                        '{{ $key }} ({{ $count }})',
                     @endforeach
                             ],
                 responsive: [{
@@ -750,7 +750,7 @@
                 },
                 labels: [
                     @foreach ($patient_test_daily_report_op as $key => $count)
-                        '{{ App\Models\FeeType::find($key)->type }} ({{ $count }})',
+                        '{{ $key }} ({{ $count }})',
                     @endforeach
                             ],
                 responsive: [{
@@ -799,7 +799,7 @@
                 },
                 labels: [
                     @foreach ($patient_test_daily_report_rd as $key => $count)
-                        '{{ App\Models\FeeType::find($key)->type }} ({{ $count }})',
+                        '{{ $key }} ({{ $count }})',
                     @endforeach
                             ],
                 responsive: [{

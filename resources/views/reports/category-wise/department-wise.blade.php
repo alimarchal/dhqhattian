@@ -173,7 +173,7 @@
                                             rowspan="{{ count($fee_types) }}">{{ $fee_category_name }}</td>
                                     @endif
                                     {{--                                    <td class="border-black border px-4 py-2">{{ $fee_type->fee_category_id }}</td>--}}
-                                    <td class="border-black border px-4 py-2">{{ $fee_type->type }}</td>
+                                    <td class="border-black border px-4 py-2">{{ $fee_type?->type ?? 'N/A' }}</td>
 
                                     <td class="border-black border px-4 py-2 text-center">
                                         {{-- Fee category 13 = Chit-based fees (includes specialists), also IDs 1, 19 are special chit fees --}}
