@@ -189,7 +189,7 @@ class ReportsController extends Controller
             ->whereBetween('issued_date', [$date_start_at, $date_end_at]);
 
         // Get all specialist departments
-        $specialistDepartments = Department::where('name', 'like', '%specialist%');
+        $specialistDepartments = Department::where('name', 'ilike', '%specialist%');
 
         if ($request->department_id) {
             $specialistDepartments->where('id', $request->department_id);
