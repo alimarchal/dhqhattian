@@ -79,13 +79,13 @@ class PatientController extends Controller
             $dateOfBirth = $request->dob; // Get the provided date of birth from the request
 
             // Check if the user has already provided a date of birth
-            if (! $dateOfBirth) {
+            if (!$dateOfBirth) {
                 if ($yearsMonths === 'Year(s)') {
                     $dateOfBirth = now()->subYears($age)->format('Y-m-d');
                 } elseif ($yearsMonths === 'Month(s)') {
                     $dateOfBirth = now()->subMonths($age)->format('Y-m-d');
                 } elseif ($yearsMonths === 'Day(s)') {
-                    $dateOfBirth = now()->subDay($age)->format('Y-m-d');
+                    $dateOfBirth = now()->subDays($age)->format('Y-m-d');
                 } else {
                     // Handle an invalid selection or provide a default value
                     $dateOfBirth = null;
@@ -97,9 +97,10 @@ class PatientController extends Controller
             DB::commit();
         } catch (\Exception $e) {
             DB::rollback();
+            \Illuminate\Support\Facades\Log::error('Patient Creation Error: ' . $e->getMessage());
         }
 
-        if (! empty($patient)) {
+        if (!empty($patient)) {
             return to_route('patient.actions', [$patient->id]);
         } else {
             return to_route('patient.index')->with('message', 'There is an error occurred for creating patient');
@@ -112,12 +113,47 @@ class PatientController extends Controller
             'first_name' => 'required',
             'department_id' => 'required',
             'mobile' => 'required|regex:/^03\d{2}-\d{7}$/',
+            'phone' => 'nullable|string|max:15',
             'age' => 'required|integer|min:0',
             'years_months' => 'required_if:age,!=,null|in:Year(s),Month(s),Day(s)',
             'government_non_gov' => 'required',
-            'government_department_id' => 'required_with:government_card_no,designation',
-            'government_card_no' => 'required_with:government_department_id',
-            'designation' => 'required_with:government_department_id',
+            'government_department_id' => 'required_with:government_card_no,designation,sehat_sahulat_visit_no,sehat_sahulat_patient_id',
+            'government_card_no' => [
+                'nullable',
+                function ($attribute, $value, $fail) use ($request) {
+                    if ($request->government_department_id && $request->government_department_id != 95 && empty($value)) {
+                        $fail('The government card no field is required.');
+                    }
+                },
+            ],
+            'designation' => [
+                'nullable',
+                function ($attribute, $value, $fail) use ($request) {
+                    if ($request->government_department_id && $request->government_department_id != 95 && empty($value)) {
+                        $fail('The designation field is required.');
+                    }
+                },
+            ],
+            'sehat_sahulat_visit_no' => [
+                'nullable',
+                'string',
+                'max:255',
+                function ($attribute, $value, $fail) use ($request) {
+                    if ($request->government_department_id == 95 && empty($value)) {
+                        $fail('The Visit ID is required for Sehat Sahulat Program.');
+                    }
+                },
+            ],
+            'sehat_sahulat_patient_id' => [
+                'nullable',
+                'string',
+                'max:255',
+                function ($attribute, $value, $fail) use ($request) {
+                    if ($request->government_department_id == 95 && empty($value)) {
+                        $fail('The Patient ID is required for Sehat Sahulat Program.');
+                    }
+                },
+            ],
         ]);
         // login user id capture
         $request->merge(['user_id' => auth()->user()->id]);
@@ -132,7 +168,7 @@ class PatientController extends Controller
         $count_chit_of_today++;
 
         if ($count_chit_of_today_limit <= $count_chit_of_today) {
-            return to_route('patient.create-opd')->with('error', 'Today\'s limit has been reached to '.$count_chit_of_today_limit);
+            return to_route('patient.create-opd')->with('error', 'Today\'s limit has been reached to ' . $count_chit_of_today_limit);
         }
 
         DB::beginTransaction();
@@ -145,11 +181,11 @@ class PatientController extends Controller
             $dateOfBirth = $request->dob; // Get the provided date of birth from the request
 
             // Check if the user has already provided a date of birth
-            if (! $dateOfBirth) {
+            if (!$dateOfBirth) {
                 if ($yearsMonths === 'Year(s)') {
                     $dateOfBirth = now()->subYears($age)->format('Y-m-d');
                 } elseif ($yearsMonths === 'Day(s)') {
-                    $dateOfBirth = now()->subDay($age)->format('Y-m-d');
+                    $dateOfBirth = now()->subDays($age)->format('Y-m-d');
                 } elseif ($yearsMonths === 'Month(s)') {
                     $dateOfBirth = now()->subMonths($age)->format('Y-m-d');
                 } else {
@@ -258,14 +294,16 @@ class PatientController extends Controller
                 'govt_amount' => $govt_amount,
                 'ipd_opd' => $ipd_opd,
                 'payment_status' => 1,
+                'sehat_sahulat_visit_no' => $request->sehat_sahulat_visit_no,
             ]);
             DB::commit();
         } catch (\Exception $e) {
             DB::rollback();
             // something went wrong
+            \Illuminate\Support\Facades\Log::error($e->getMessage());
         }
 
-        if (! empty($chit) && ! empty($patient)) {
+        if (!empty($chit) && !empty($patient)) {
             return to_route('chit.print', [$patient->id, $chit->id]);
         } else {
             return to_route('patient.index')->with('message', 'There is an error occurred for creating patient and chit');
@@ -300,7 +338,7 @@ class PatientController extends Controller
         $count_chit_of_today++;
 
         if ($count_chit_of_today_limit <= $count_chit_of_today) {
-            return to_route('patient.create-ipd')->with('error', 'Today\'s limit has been reached to '.$count_chit_of_today_limit);
+            return to_route('patient.create-ipd')->with('error', 'Today\'s limit has been reached to ' . $count_chit_of_today_limit);
         }
 
         DB::beginTransaction();
@@ -313,13 +351,13 @@ class PatientController extends Controller
             $dateOfBirth = $request->dob; // Get the provided date of birth from the request
 
             // Check if the user has already provided a date of birth
-            if (! $dateOfBirth) {
+            if (!$dateOfBirth) {
                 if ($yearsMonths === 'Year(s)') {
                     $dateOfBirth = now()->subYears($age)->format('Y-m-d');
                 } elseif ($yearsMonths === 'Month(s)') {
                     $dateOfBirth = now()->subMonths($age)->format('Y-m-d');
                 } elseif ($yearsMonths === 'Day(s)') {
-                    $dateOfBirth = now()->subDay($age)->format('Y-m-d');
+                    $dateOfBirth = now()->subDays($age)->format('Y-m-d');
                 } else {
                     // Handle an invalid selection or provide a default value
                     $dateOfBirth = null;
@@ -391,7 +429,7 @@ class PatientController extends Controller
             // something went wrong
         }
 
-        if (! empty($chit) && ! empty($patient)) {
+        if (!empty($chit) && !empty($patient)) {
             return to_route('chit.print', [$patient->id, $chit->id]);
         } else {
             return to_route('patient.index')->with('message', 'There is an error occurred for creating patient and chit');
@@ -574,7 +612,7 @@ class PatientController extends Controller
             if ($request->has('admission_form_return') && $request->admission_form_return == 1) {
                 $invoice = Invoice::find($request->admission_no);
 
-                if (! empty($invoice)) {
+                if (!empty($invoice)) {
                     $admission = Admission::find($invoice->id);
                     $admission->status = 'Yes';
                     $admission->save();
@@ -616,10 +654,10 @@ class PatientController extends Controller
         $department = null;
         $fee_category = null;
         $fee_category_main = null;
-        if (! empty($invoice->patient_test_latest->fee_type->feeCategory)) {
+        if (!empty($invoice->patient_test_latest->fee_type->feeCategory)) {
             $department = $invoice->patient_test_latest->fee_type->feeCategory->name;
         }
-        if (! empty($invoice->patient_test_latest->fee_type)) {
+        if (!empty($invoice->patient_test_latest->fee_type)) {
             $fee_category = $invoice->patient_test_latest->fee_type->type;
             $fee_cat_id = FeeCategory::find($invoice->patient_test_latest->fee_type->fee_category_id)->id;
 
@@ -654,10 +692,10 @@ class PatientController extends Controller
         $department = null;
         $fee_category = null;
         $fee_category_main = null;
-        if (! empty($invoice->patient_test_latest->fee_type->feeCategory)) {
+        if (!empty($invoice->patient_test_latest->fee_type->feeCategory)) {
             $department = $invoice->patient_test_latest->fee_type->feeCategory->name;
         }
-        if (! empty($invoice->patient_test_latest->fee_type)) {
+        if (!empty($invoice->patient_test_latest->fee_type)) {
             $fee_category = $invoice->patient_test_latest->fee_type->type;
             $fee_cat_id = FeeCategory::find($invoice->patient_test_latest->fee_type->fee_category_id)->id;
 
@@ -800,7 +838,7 @@ class PatientController extends Controller
             DB::rollBack();
 
             return back()->withInput()
-                ->with('error', 'Failed to record emergency treatment: '.$e->getMessage());
+                ->with('error', 'Failed to record emergency treatment: ' . $e->getMessage());
         }
     }
 }
