@@ -35,13 +35,45 @@ class ChitController extends Controller
     {
         $request->validate([
             'ipd_opd' => 'required',
-            'government_department_id' => 'required_with:government_card_no,designation',
-            'government_card_no' => 'required_with:government_department_id',
-            'designation' => 'required_with:government_department_id',
             'department_id' => 'required',
+            'government_department_id' => 'required_with:government_card_no,designation,sehat_sahulat_visit_no,sehat_sahulat_patient_id',
+            'government_card_no' => [
+                'nullable',
+                function ($attribute, $value, $fail) use ($request) {
+                    if ($request->government_department_id && $request->government_department_id != 95 && empty($value)) {
+                        $fail('The government card no field is required.');
+                    }
+                },
+            ],
+            'designation' => [
+                'nullable',
+                function ($attribute, $value, $fail) use ($request) {
+                    if ($request->government_department_id && $request->government_department_id != 95 && empty($value)) {
+                        $fail('The designation field is required.');
+                    }
+                },
+            ],
+            'sehat_sahulat_visit_no' => [
+                'nullable',
+                'string',
+                'max:255',
+                function ($attribute, $value, $fail) use ($request) {
+                    if ($request->government_department_id == 95 && empty($value)) {
+                        $fail('The Visit ID is required for Sehat Sahulat Program.');
+                    }
+                },
+            ],
+            'sehat_sahulat_patient_id' => [
+                'nullable',
+                'string',
+                'max:255',
+                function ($attribute, $value, $fail) use ($request) {
+                    if ($request->government_department_id == 95 && empty($value)) {
+                        $fail('The Patient ID is required for Sehat Sahulat Program.');
+                    }
+                },
+            ],
         ]);
-
-        //        dd($request->all());
 
         // login user id capture
         $request->merge(['user_id' => auth()->user()->id]);
@@ -51,7 +83,7 @@ class ChitController extends Controller
         $chit = null;
         // 46 >= 51
         if ($count_chit_of_today_limit <= $count_chit_of_today) {
-            return to_route('patient.create')->with('error', 'OPD today\'s limit has been reached to maximum limit of '.$count_chit_of_today_limit.' as assigned by OPD.');
+            return to_route('patient.create')->with('error', 'OPD today\'s limit has been reached to maximum limit of ' . $count_chit_of_today_limit . ' as assigned by OPD.');
         }
 
         DB::beginTransaction();
@@ -134,6 +166,16 @@ class ChitController extends Controller
                 $ipd_opd = 1;
             }
 
+            // Update patient details if Sehat Sahulat fields are present
+            if ($request->government_department_id == 95) {
+                $patient->update([
+                    'sehat_sahulat_visit_no' => $request->sehat_sahulat_visit_no,
+                    'sehat_sahulat_patient_id' => $request->sehat_sahulat_patient_id,
+                    'government_department_id' => 95,
+                    'government_non_gov' => 1,
+                ]);
+            }
+
             // this is for opd and ipd
             $chit = Chit::create([
                 'user_id' => $request->user_id,
@@ -151,11 +193,12 @@ class ChitController extends Controller
                 'govt_amount' => $govt_amount,
                 'ipd_opd' => $ipd_opd,
                 'payment_status' => 1,
+                'sehat_sahulat_visit_no' => $request->sehat_sahulat_visit_no,
             ]);
             DB::commit();
         } catch (\Exception $e) {
             DB::rollback();
-            // something went wrong
+            \Illuminate\Support\Facades\Log::error('Issue Chit Error: ' . $e->getMessage());
         }
 
         return to_route('chit.print', [$patient->id, $chit->id]);
@@ -172,14 +215,14 @@ class ChitController extends Controller
             $issued_chits = QueryBuilder::for(Chit::class)
                 ->allowedFilters(['patient_id', 'fee_type_id', 'government_department_id', 'issued_date', 'ipd_opd', 'government_card_no', AllowedFilter::exact('government_non_gov'), AllowedFilter::exact('id'), AllowedFilter::exact('department_id')])
                 ->where('user_id', $user->id)->whereDate('issued_date', Carbon::today())
-//                ->where('user_id', $user->id)->where('ipd_opd', 1)->whereDate('issued_date', Carbon::today())
+                //                ->where('user_id', $user->id)->where('ipd_opd', 1)->whereDate('issued_date', Carbon::today())
 //                ->orderByDesc('created_at') // Corrected 'DSEC' to 'DESC'
                 ->paginate(500);
         } elseif ($user->hasRole(['Administrator'])) {
             $issued_chits = QueryBuilder::for(Chit::class)
                 ->allowedFilters(['patient_id', 'fee_type_id', 'government_department_id', 'issued_date', 'ipd_opd', 'government_card_no', AllowedFilter::exact('government_non_gov'), AllowedFilter::exact('id'), AllowedFilter::exact('department_id')])
                 ->whereDate('issued_date', Carbon::today())
-//                ->orderByDesc('created_at') // Corrected 'DSEC' to 'DESC'
+                //                ->orderByDesc('created_at') // Corrected 'DSEC' to 'DESC'
                 ->paginate(1000);
         }
 
@@ -191,8 +234,8 @@ class ChitController extends Controller
         $start_date = Carbon::parse($request->start_date)->format('Y-m-d');
         $end_date = Carbon::parse($request->end_date)->format('Y-m-d');
 
-        $date_start_at = $start_date.' 00:00:00';
-        $date_end_at = $end_date.' 23:59:59';
+        $date_start_at = $start_date . ' 00:00:00';
+        $date_end_at = $end_date . ' 23:59:59';
 
         $user = \Auth::user();
         $issued_chits = null;

@@ -39,6 +39,8 @@ class Patient extends Model
         'government_department_id',
         'designation',
         'government_card_no',
+        'sehat_sahulat_patient_id',
+        'sehat_sahulat_visit_no',
     ];
 
 
