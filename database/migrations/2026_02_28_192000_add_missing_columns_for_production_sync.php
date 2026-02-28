@@ -257,13 +257,12 @@ return new class extends Migration
                 $admin->syncPermissions($adminPermissions);
             }
 
-            // Front Desk/Receptionist — daily operational permissions
+            // Front Desk/Receptionist — daily operational permissions only
             $frontDesk = Role::where('name', 'Front Desk/Receptionist')->where('guard_name', $guard)->first();
             if ($frontDesk) {
                 $frontDeskPermissions = Permission::where('guard_name', $guard)
                     ->whereIn('name', [
                         'view dashboard',
-                        'view dashboard statistics',
                         'view patients',
                         'create patients',
                         'edit patients',
@@ -275,13 +274,6 @@ return new class extends Migration
                         'view admissions',
                         'create admissions',
                         'edit admissions',
-                        'view reports',
-                        'view opd reports',
-                        'view daily reports',
-                        'view departments',
-                        'view government departments',
-                        'view fee types',
-                        'view fee categories',
                     ])
                     ->get();
                 $frontDesk->syncPermissions($frontDeskPermissions);
