@@ -82,26 +82,24 @@ Route::middleware(['auth:sanctum', config('jetstream.auth_session'), 'verified']
         Route::get('invoice/issued', [\App\Http\Controllers\InvoiceController::class, 'issued'])->name('invoice.issued');
     });
 
-    // Reports
-    Route::middleware('permission:view reports')->group(function () {
-        Route::get('reports', [\App\Http\Controllers\ReportsController::class, 'index'])->name('reports.index');
+    // Reports — each report type has its own permission (no parent gate)
+    Route::get('reports', [\App\Http\Controllers\ReportsController::class, 'index'])->name('reports.index')->middleware('permission:view reports');
 
-        Route::get('reports/opd', [\App\Http\Controllers\ReportsController::class, 'opd'])->name('reports.opd')->middleware('permission:view opd reports');
-        Route::get('reports/opd/user-wise', [\App\Http\Controllers\ReportsController::class, 'reportOpdUserWise'])->name('reports.opd.user-wise')->middleware('permission:view opd reports');
-        Route::get('reports/opd/specialist-fees', [\App\Http\Controllers\ReportsController::class, 'reportOpdSpecialistFees'])->name('reports.opd.specialist-fees')->middleware('permission:view opd reports');
-        Route::get('reports/ipd', [\App\Http\Controllers\ReportsController::class, 'ipd'])->name('reports.ipd');
-        Route::get('reports/opd/reports-daily', [\App\Http\Controllers\ReportsController::class, 'reportDaily'])->name('reports.opd.reportDaily')->middleware('permission:view daily reports');
-        Route::get('reports/ipd/reports-daily', [\App\Http\Controllers\ReportsController::class, 'reportDailyIPD'])->name('reports.opd.reportDailyIPD')->middleware('permission:view daily reports');
+    Route::get('reports/opd', [\App\Http\Controllers\ReportsController::class, 'opd'])->name('reports.opd')->middleware('permission:view opd reports');
+    Route::get('reports/opd/user-wise', [\App\Http\Controllers\ReportsController::class, 'reportOpdUserWise'])->name('reports.opd.user-wise')->middleware('permission:view opd reports');
+    Route::get('reports/opd/specialist-fees', [\App\Http\Controllers\ReportsController::class, 'reportOpdSpecialistFees'])->name('reports.opd.specialist-fees')->middleware('permission:view opd reports');
+    Route::get('reports/ipd', [\App\Http\Controllers\ReportsController::class, 'ipd'])->name('reports.ipd')->middleware('permission:view reports');
+    Route::get('reports/opd/reports-daily', [\App\Http\Controllers\ReportsController::class, 'reportDaily'])->name('reports.opd.reportDaily')->middleware('permission:view daily reports');
+    Route::get('reports/ipd/reports-daily', [\App\Http\Controllers\ReportsController::class, 'reportDailyIPD'])->name('reports.opd.reportDailyIPD')->middleware('permission:view daily reports');
 
-        Route::get('reports/misc', [\App\Http\Controllers\ReportsController::class, 'reportMisc'])->name('reports.misc');
-        Route::get('reports/misc/admission', [\App\Http\Controllers\ReportsController::class, 'admission'])->name('reports.misc.admission')->middleware('permission:view admission reports');
-        Route::get('reports/emergency-treatments', [\App\Http\Controllers\ReportsController::class, 'emergency_treatments'])->name('reports.emergency_treatments')->middleware('permission:view emergency reports');
+    Route::get('reports/misc', [\App\Http\Controllers\ReportsController::class, 'reportMisc'])->name('reports.misc')->middleware('permission:view reports');
+    Route::get('reports/misc/admission', [\App\Http\Controllers\ReportsController::class, 'admission'])->name('reports.misc.admission')->middleware('permission:view admission reports');
+    Route::get('reports/emergency-treatments', [\App\Http\Controllers\ReportsController::class, 'emergency_treatments'])->name('reports.emergency_treatments')->middleware('permission:view emergency reports');
 
-        Route::get('reports/misc/department-wise', [\App\Http\Controllers\ReportsController::class, 'department_wise'])->name('reports.misc.category-wise')->middleware('permission:view department reports');
-        Route::get('reports/misc/department-wise-two', [\App\Http\Controllers\ReportsController::class, 'department_wise_two'])->name('reports.misc.category-wise-two')->middleware('permission:view department reports');
+    Route::get('reports/misc/department-wise', [\App\Http\Controllers\ReportsController::class, 'department_wise'])->name('reports.misc.category-wise')->middleware('permission:view department reports');
+    Route::get('reports/misc/department-wise-two', [\App\Http\Controllers\ReportsController::class, 'department_wise_two'])->name('reports.misc.category-wise-two')->middleware('permission:view department reports');
 
-        Route::get('reports/ssp/claims', [\App\Http\Controllers\ReportsController::class, 'sspClaims'])->name('reports.ssp.claims')->middleware('permission:view ssp reports');
-    });
+    Route::get('reports/ssp/claims', [\App\Http\Controllers\ReportsController::class, 'sspClaims'])->name('reports.ssp.claims')->middleware('permission:view ssp reports');
 
     // Process and Restore Invoice Routes
     Route::get('/process', [\App\Http\Controllers\ProcessInvoicesController::class, 'process'])->name('invoices.process');
