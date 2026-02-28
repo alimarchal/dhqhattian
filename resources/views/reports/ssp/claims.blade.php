@@ -359,13 +359,14 @@
                                     <th class="px-2 py-2">Date</th>
                                     <th class="px-2 py-2">Chit #</th>
                                     <th class="px-2 py-2">Patient ID</th>
+                                    <th class="px-2 py-2">SS Patient ID</th>
+                                    <th class="px-2 py-2">SS Visit No</th>
                                     <th class="px-2 py-2">Patient Name</th>
                                     <th class="px-2 py-2">Age/Sex</th>
                                     <th class="px-2 py-2">Department</th>
                                     <th class="px-2 py-2">Fee Type</th>
                                     <th class="px-2 py-2">Charged (Rs.)</th>
                                     <th class="px-2 py-2">Actual Fee (Rs.)</th>
-                                    <th class="px-2 py-2">SSP Visit No</th>
                                     <th class="px-2 py-2">Entered By</th>
                                 </tr>
                             </thead>
@@ -377,6 +378,8 @@
                                             {{ \Carbon\Carbon::parse($chit->issued_date)->format('d-M-Y') }}</td>
                                         <td class="text-center px-2 py-1">{{ $chit->id }}</td>
                                         <td class="text-center px-2 py-1">{{ $chit->patient_id }}</td>
+                                        <td class="text-center px-2 py-1 text-blue-700 font-semibold">{{ $chit->patient->sehat_sahulat_patient_id ?? '-' }}</td>
+                                        <td class="text-center px-2 py-1 text-blue-700 font-semibold">{{ $chit->sehat_sahulat_visit_no ?? $chit->patient->sehat_sahulat_visit_no ?? '-' }}</td>
                                         <td class="px-2 py-1">
                                             {{ $chit->patient->title . '. ' . $chit->patient->first_name . ' ' . $chit->patient->last_name }}
                                             @if($chit->patient->father_husband_name)
@@ -391,12 +394,11 @@
                                         <td class="text-right px-2 py-1">{{ number_format($chit->amount, 2) }}</td>
                                         <td class="text-right px-2 py-1 font-bold text-emerald-700">
                                             {{ number_format($chit->actual_amount, 2) }}</td>
-                                        <td class="text-center px-2 py-1">{{ $chit->sehat_sahulat_visit_no }}</td>
                                         <td class="px-2 py-1">{{ $chit->user->name ?? '-' }}</td>
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="12" class="text-center px-4 py-4 text-gray-500">
+                                        <td colspan="13" class="text-center px-4 py-4 text-gray-500">
                                             No OPD chits found for SSP patients in the selected date range.
                                         </td>
                                     </tr>
@@ -404,13 +406,13 @@
                             </tbody>
                             <tfoot>
                                 <tr class="bg-emerald-50 font-bold">
-                                    <td colspan="8" class="text-right px-2 py-2">OPD Totals ({{ $opdChits->count() }}
+                                    <td colspan="10" class="text-right px-2 py-2">OPD Totals ({{ $opdChits->count() }}
                                         chits):</td>
                                     <td class="text-right px-2 py-2">Rs. {{ number_format($opdChits->sum('amount'), 2) }}
                                     </td>
                                     <td class="text-right px-2 py-2 text-emerald-700">Rs.
                                         {{ number_format($opdChits->sum('actual_amount'), 2) }}</td>
-                                    <td colspan="2" class="px-2 py-2"></td>
+                                    <td class="px-2 py-2"></td>
                                 </tr>
                             </tfoot>
                         </table>
@@ -431,6 +433,8 @@
                                     <th class="px-2 py-2">Date</th>
                                     <th class="px-2 py-2">Invoice #</th>
                                     <th class="px-2 py-2">Patient ID</th>
+                                    <th class="px-2 py-2">SS Patient ID</th>
+                                    <th class="px-2 py-2">SS Visit No</th>
                                     <th class="px-2 py-2">Patient Name</th>
                                     <th class="px-2 py-2">Age/Sex</th>
                                     <th class="px-2 py-2">Ward</th>
@@ -448,6 +452,8 @@
                                             {{ \Carbon\Carbon::parse($invoice->created_at)->format('d-M-Y') }}</td>
                                         <td class="text-center px-2 py-1">{{ $invoice->id }}</td>
                                         <td class="text-center px-2 py-1">{{ $invoice->patient_id }}</td>
+                                        <td class="text-center px-2 py-1 text-blue-700 font-semibold">{{ $invoice->patient->sehat_sahulat_patient_id ?? '-' }}</td>
+                                        <td class="text-center px-2 py-1 text-blue-700 font-semibold">{{ $invoice->patient->sehat_sahulat_visit_no ?? '-' }}</td>
                                         <td class="px-2 py-1">
                                             {{ $invoice->patient->title . '. ' . $invoice->patient->first_name . ' ' . $invoice->patient->last_name }}
                                             @if($invoice->patient->father_husband_name)
@@ -478,7 +484,7 @@
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="11" class="text-center px-4 py-4 text-gray-500">
+                                        <td colspan="13" class="text-center px-4 py-4 text-gray-500">
                                             No IPD invoices found for SSP patients in the selected date range.
                                         </td>
                                     </tr>
@@ -486,7 +492,7 @@
                             </tbody>
                             <tfoot>
                                 <tr class="bg-emerald-50 font-bold">
-                                    <td colspan="8" class="text-right px-2 py-2">IPD Totals ({{ $ipdInvoices->count() }}
+                                    <td colspan="10" class="text-right px-2 py-2">IPD Totals ({{ $ipdInvoices->count() }}
                                         invoices):</td>
                                     <td class="text-right px-2 py-2">Rs.
                                         {{ number_format($ipdInvoices->sum('total_amount'), 2) }}</td>
