@@ -245,16 +245,11 @@ return new class extends Migration
                 $superAdmin->syncPermissions(Permission::where('guard_name', $guard)->get());
             }
 
-            // Administrator gets all except role/permission management
+            // Administrator — role exists but NO permissions synced to it.
+            // Permissions are assigned DIRECTLY to users with this role.
             $admin = Role::where('name', 'Administrator')->where('guard_name', $guard)->first();
             if ($admin) {
-                $adminPermissions = Permission::where('guard_name', $guard)
-                    ->whereNotIn('name', [
-                        'view roles', 'create roles', 'edit roles', 'delete roles',
-                        'view permissions', 'manage permissions', 'assign permissions',
-                    ])
-                    ->get();
-                $admin->syncPermissions($adminPermissions);
+                $admin->syncPermissions([]);
             }
 
             // Front Desk/Receptionist — daily operational permissions only
@@ -274,6 +269,7 @@ return new class extends Migration
                         'view admissions',
                         'create admissions',
                         'edit admissions',
+                        'view opd reports',
                     ])
                     ->get();
                 $frontDesk->syncPermissions($frontDeskPermissions);
@@ -320,6 +316,7 @@ return new class extends Migration
             'create invoices',
             'view admissions',
             'create admissions',
+            'view opd reports',
         ];
 
         $essentialPerms = Permission::where('guard_name', 'sanctum')
@@ -331,14 +328,17 @@ return new class extends Migration
         });
         // =====================================================================
 
-        // Step G2: Dr. Khawaja Moosa — dashboard + reports only (no admin access)
+        // Step G2: Dr. Khawaja Moosa — Administrator role + direct report permissions
+        //         Role gives base admin access; direct permissions are removable via UI.
         // =====================================================================
         $moosa = User::where('email', 'khawaja.moosa@yahoo.com')->first();
         if ($moosa) {
-            // Remove Administrator role
-            $moosa->syncRoles([]);
+            // Assign Administrator role
+            $moosa->syncRoles(
+                Role::where('name', 'Administrator')->where('guard_name', 'sanctum')->get()
+            );
 
-            // Give only dashboard + all report permissions
+            // Give direct (removable) report permissions
             $moosaPermissions = Permission::where('guard_name', 'sanctum')
                 ->whereIn('name', [
                     'view dashboard',
@@ -353,6 +353,16 @@ return new class extends Migration
                 ])
                 ->get();
             $moosa->syncPermissions($moosaPermissions);
+        }
+        // =====================================================================
+
+        // Step G3: kh.marchal@gmail.com — Super-Admin role (all permissions via Gate::before)
+        // =====================================================================
+        $marchal = User::where('email', 'kh.marchal@gmail.com')->first();
+        if ($marchal) {
+            $marchal->syncRoles(
+                Role::where('name', 'Super-Admin')->where('guard_name', 'sanctum')->get()
+            );
         }
         // =====================================================================
 
