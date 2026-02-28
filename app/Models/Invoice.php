@@ -22,6 +22,7 @@ class Invoice extends Model
         'total_amount',
         'hif_amount',
         'govt_amount',
+        'actual_total_amount',
     ];
 
     public function patient_test(): HasMany

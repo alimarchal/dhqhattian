@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Admission;
+use App\Models\AdmissionWard;
 use App\Models\Chit;
 use App\Models\Department;
 use App\Models\FeeCategory;
@@ -566,5 +567,161 @@ class ReportsController extends Controller
             ->get();
 
         return view('reports.emergency-treatments.index', compact('treatments', 'start_date', 'end_date'));
+    }
+
+    /**
+     * SSP (Sehat Sahulat Program) Insurance Claims Report.
+     *
+     * Shows OPD chits and IPD invoices/tests/admissions for SSP patients
+     * with actual fee amounts stored for insurance claim submissions.
+     */
+    public function sspClaims(Request $request): \Illuminate\View\View
+    {
+        $sspDepartmentId = 95;
+
+        $start_date = $request->has('start_date') ? Carbon::parse($request->start_date)->format('Y-m-d') : Carbon::today()->format('Y-m-d');
+        $end_date = $request->has('end_date') ? Carbon::parse($request->end_date)->format('Y-m-d') : Carbon::today()->format('Y-m-d');
+
+        $date_start_at = $start_date.' 00:00:00';
+        $date_end_at = $end_date.' 23:59:59';
+
+        $reportType = $request->input('report_type', 'all'); // all, opd, ipd
+        $departmentId = $request->input('department_id');
+        $feeCategoryId = $request->input('fee_category_id');
+        $patientId = $request->input('patient_id');
+        $patientName = $request->input('patient_name');
+        $sex = $request->input('sex');
+        $userId = $request->input('user_id');
+        $unitWard = $request->input('unit_ward');
+        $feeStatus = $request->input('fee_status'); // Normal, Return Fee
+
+        // --- OPD Section: Chits ---
+        $opdChits = collect();
+        if ($reportType === 'all' || $reportType === 'opd') {
+            $chitQuery = Chit::with(['patient', 'department', 'fee_type', 'user'])
+                ->where('government_department_id', $sspDepartmentId)
+                ->whereBetween('issued_date', [$date_start_at, $date_end_at]);
+
+            if ($departmentId) {
+                $chitQuery->where('department_id', $departmentId);
+            }
+
+            if ($patientId) {
+                $chitQuery->where('patient_id', $patientId);
+            }
+
+            if ($patientName) {
+                $chitQuery->whereHas('patient', function ($q) use ($patientName) {
+                    $q->where('first_name', 'ilike', '%'.$patientName.'%')
+                        ->orWhere('last_name', 'ilike', '%'.$patientName.'%')
+                        ->orWhere('father_husband_name', 'ilike', '%'.$patientName.'%');
+                });
+            }
+
+            if ($sex !== null && $sex !== '') {
+                $chitQuery->whereHas('patient', function ($q) use ($sex) {
+                    $q->where('sex', $sex);
+                });
+            }
+
+            if ($userId) {
+                $chitQuery->where('user_id', $userId);
+            }
+
+            if ($feeCategoryId) {
+                $chitQuery->whereHas('fee_type', function ($q) use ($feeCategoryId) {
+                    $q->where('fee_category_id', $feeCategoryId);
+                });
+            }
+
+            $opdChits = $chitQuery->orderBy('issued_date', 'asc')->get();
+        }
+
+        // --- IPD Section: Invoices with PatientTests and Admissions ---
+        $ipdInvoices = collect();
+        if ($reportType === 'all' || $reportType === 'ipd') {
+            $invoiceQuery = Invoice::with(['patient', 'patient_test.fee_type', 'admission', 'user'])
+                ->where('government_department_id', $sspDepartmentId)
+                ->whereBetween('created_at', [$date_start_at, $date_end_at]);
+
+            if ($patientId) {
+                $invoiceQuery->where('patient_id', $patientId);
+            }
+
+            if ($patientName) {
+                $invoiceQuery->whereHas('patient', function ($q) use ($patientName) {
+                    $q->where('first_name', 'ilike', '%'.$patientName.'%')
+                        ->orWhere('last_name', 'ilike', '%'.$patientName.'%')
+                        ->orWhere('father_husband_name', 'ilike', '%'.$patientName.'%');
+                });
+            }
+
+            if ($sex !== null && $sex !== '') {
+                $invoiceQuery->whereHas('patient', function ($q) use ($sex) {
+                    $q->where('sex', $sex);
+                });
+            }
+
+            if ($userId) {
+                $invoiceQuery->where('user_id', $userId);
+            }
+
+            if ($unitWard) {
+                $invoiceQuery->whereHas('admission', function ($q) use ($unitWard) {
+                    $q->where('unit_ward', $unitWard);
+                });
+            }
+
+            if ($feeCategoryId) {
+                $invoiceQuery->whereHas('patient_test', function ($q) use ($feeCategoryId) {
+                    $q->whereHas('fee_type', function ($q2) use ($feeCategoryId) {
+                        $q2->where('fee_category_id', $feeCategoryId);
+                    });
+                });
+            }
+
+            if ($feeStatus) {
+                $invoiceQuery->whereHas('patient_test', function ($q) use ($feeStatus) {
+                    $q->where('status', $feeStatus);
+                });
+            }
+
+            $ipdInvoices = $invoiceQuery->orderBy('created_at', 'asc')->get();
+        }
+
+        // --- Summary Statistics ---
+        $summary = [
+            'opd_total_patients' => $opdChits->unique('patient_id')->count(),
+            'opd_total_chits' => $opdChits->count(),
+            'opd_actual_amount' => $opdChits->sum('actual_amount'),
+            'opd_charged_amount' => $opdChits->sum('amount'),
+            'ipd_total_patients' => $ipdInvoices->unique('patient_id')->count(),
+            'ipd_total_invoices' => $ipdInvoices->count(),
+            'ipd_actual_amount' => $ipdInvoices->sum('actual_total_amount'),
+            'ipd_charged_amount' => $ipdInvoices->sum('total_amount'),
+            'ipd_total_tests' => $ipdInvoices->sum(fn ($inv) => $inv->patient_test->count()),
+        ];
+
+        $summary['grand_actual_amount'] = $summary['opd_actual_amount'] + $summary['ipd_actual_amount'];
+        $summary['grand_charged_amount'] = $summary['opd_charged_amount'] + $summary['ipd_charged_amount'];
+        $summary['grand_claimable_amount'] = $summary['grand_actual_amount'] - $summary['grand_charged_amount'];
+
+        // --- Dropdown Data for Filters ---
+        $departments = Department::orderBy('name')->get();
+        $feeCategories = FeeCategory::orderBy('name')->get();
+        $users = User::orderBy('name')->get();
+        $admissionWards = AdmissionWard::orderBy('name')->get();
+
+        return view('reports.ssp.claims', compact(
+            'opdChits',
+            'ipdInvoices',
+            'summary',
+            'start_date',
+            'end_date',
+            'departments',
+            'feeCategories',
+            'users',
+            'admissionWards',
+        ));
     }
 }

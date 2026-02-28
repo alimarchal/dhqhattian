@@ -143,6 +143,29 @@
                     </div>
                 </a>
 
+                <a href="{{ route('reports.ssp.claims') }}"
+                    class="transform hover:scale-105 transition duration-300 shadow-xl rounded-lg col-span-12 sm:col-span-6 xl:col-span-3 intro-y bg-emerald-700">
+                    <div class="p-5">
+                        <div class="grid grid-cols-3 gap-1">
+                            <div class="col-span-2">
+                                <div class="text-3xl font-bold leading-8 text-white">
+                                    SSP
+                                </div>
+                                <div class="mt-1 text-base font-bold text-emerald-200">
+                                    Insurance Claims
+                                </div>
+                            </div>
+                            <div class="col-span-1 flex items-center justify-end">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-emerald-200" fill="none"
+                                    viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                </svg>
+                            </div>
+                        </div>
+                    </div>
+                </a>
+
 
 
                 {{-- <a href="#"

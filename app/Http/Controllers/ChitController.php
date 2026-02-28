@@ -94,6 +94,7 @@ class ChitController extends Controller
             $ipd_opd = $request->ipd_opd;
             $amount_hif = 0;
             $govt_amount = 0;
+            $actual_amount = 0;
 
             // Get department name for dynamic fee lookup
             $department = Department::find($request->department_id);
@@ -117,6 +118,14 @@ class ChitController extends Controller
                         $fee_type_id = $feeType->id;
                     } else {
                         $fee_type_id = 107;
+                    }
+                }
+
+                // For SSP (Sehat Sahulat Program), store the actual fee for insurance claim tracking
+                if ($request->government_department_id == 95) {
+                    $sspFeeType = FeeType::find($fee_type_id);
+                    if ($sspFeeType) {
+                        $actual_amount = $sspFeeType->amount;
                     }
                 }
             } else {
@@ -192,6 +201,7 @@ class ChitController extends Controller
                 'ipd_opd' => $ipd_opd,
                 'payment_status' => 1,
                 'sehat_sahulat_visit_no' => $request->sehat_sahulat_visit_no,
+                'actual_amount' => $actual_amount,
             ]);
             DB::commit();
         } catch (\Exception $e) {

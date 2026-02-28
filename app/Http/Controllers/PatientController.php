@@ -202,6 +202,7 @@ class PatientController extends Controller
             $amount_hif = null;
             $govt_amount = null;
             $fee_type_id = null;
+            $actual_amount = 0;
 
             // Get department name for dynamic fee lookup
             $department = Department::find($request->department_id);
@@ -227,6 +228,14 @@ class PatientController extends Controller
                         $fee_type_id = $feeType->id;
                     } else {
                         $fee_type_id = 107;
+                    }
+                }
+
+                // For SSP (Sehat Sahulat Program), store the actual fee for insurance claim tracking
+                if ($request->government_department_id == 95) {
+                    $sspFeeType = FeeType::find($fee_type_id);
+                    if ($sspFeeType) {
+                        $actual_amount = $sspFeeType->amount;
                     }
                 }
             } else {
@@ -293,6 +302,7 @@ class PatientController extends Controller
                 'ipd_opd' => $ipd_opd,
                 'payment_status' => 1,
                 'sehat_sahulat_visit_no' => $request->sehat_sahulat_visit_no,
+                'actual_amount' => $actual_amount,
             ]);
             DB::commit();
         } catch (\Exception $e) {
@@ -367,8 +377,28 @@ class PatientController extends Controller
             $patient = Patient::create($request->all());
 
             $amount = null;
+            $actual_amount = 0;
             if ($request->input('government_department_id')) {
                 $amount = 0.00;
+                if ($request->department_id == 7) {
+                    $fee_type_id = 108;
+                } elseif ($request->department_id == 23) {
+                    $fee_type_id = 270;
+                } elseif ($request->department_id == 1) {
+                    $fee_type_id = 1;
+                } elseif ($request->department_id == 16) {
+                    $fee_type_id = 1;
+                } else {
+                    $fee_type_id = 107;
+                }
+
+                // For SSP (Sehat Sahulat Program), store the actual fee for insurance claim tracking
+                if ($request->government_department_id == 95) {
+                    $sspFeeType = FeeType::find($fee_type_id);
+                    if ($sspFeeType) {
+                        $actual_amount = $sspFeeType->amount;
+                    }
+                }
             } else {
                 if ($request->department_id == 7) {
                     $amount = FeeType::find(108)->amount;
@@ -420,6 +450,7 @@ class PatientController extends Controller
                 'amount' => $amount,
                 'ipd_opd' => $ipd_opd,
                 'payment_status' => 1,
+                'actual_amount' => $actual_amount,
             ]);
             DB::commit();
         } catch (\Exception $e) {
@@ -500,6 +531,7 @@ class PatientController extends Controller
             $totalAllAmount = 0;
             $totalAllAmountHif = 0;
             $totalAllGovernmentAmount = 0;
+            $actualTotalAllAmount = 0;
 
             // Create initial invoice
             $invoice = Invoice::create([
@@ -540,11 +572,21 @@ class PatientController extends Controller
                 $totalAmount = 0;
                 $totalHifAmount = 0;
                 $totalGovtAmount = 0;
+                $actualTotalAmount = 0;
+
                 // Calculate total amount (based on government status)
                 if ($patient->government_non_gov == 1) {
                     $totalAmount = 0;
                     $totalHifAmount = 0;
                     $totalGovtAmount = 0;
+
+                    // For SSP (Sehat Sahulat Program), store the actual fee for insurance claim tracking
+                    if ($patient->government_department_id == 95) {
+                        $sspFeeType = FeeType::find($ptc->fee_type_id);
+                        if ($sspFeeType) {
+                            $actualTotalAmount = ($ptc->status == 'Return') ? $sspFeeType->amount * -1 : $sspFeeType->amount;
+                        }
+                    }
                 } else {
                     $feeType = FeeType::find($ptc->fee_type_id);
                     if ($ptc->status == 'Normal') {
@@ -563,6 +605,7 @@ class PatientController extends Controller
                 $totalAllAmount += $totalAmount;
                 $totalAllAmountHif += $totalHifAmount;
                 $totalAllGovernmentAmount += $totalGovtAmount;
+                $actualTotalAllAmount += $actualTotalAmount;
 
                 // Create PatientTest record
                 PatientTest::create([
@@ -575,6 +618,7 @@ class PatientController extends Controller
                     'total_amount' => $totalAmount,
                     'hif_amount' => $totalHifAmount,
                     'govt_amount' => $totalGovtAmount,
+                    'actual_total_amount' => $actualTotalAmount,
                     'status' => $ptc->status,
                 ]);
             }
@@ -583,6 +627,7 @@ class PatientController extends Controller
             $invoice->total_amount = $totalAllAmount;
             $invoice->hif_amount = $totalAllAmountHif;
             $invoice->govt_amount = $totalAllGovernmentAmount;
+            $invoice->actual_total_amount = $actualTotalAllAmount;
             $invoice->save();
 
             // Clear patient's test cart
@@ -593,6 +638,8 @@ class PatientController extends Controller
                     'user_id' => $userId,
                     'invoice_id' => $invoice->id,
                     'patient_id' => $patientId,
+                    'government_department_id' => $patient->government_department_id,
+                    'actual_total_amount' => $actualTotalAllAmount,
                     'unit_ward' => $request->unit_ward,
                     'disease' => $request->disease,
                     'category' => $request->category,

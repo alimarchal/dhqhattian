@@ -90,6 +90,8 @@ Route::middleware(['auth:sanctum', config('jetstream.auth_session'), 'verified']
     Route::get('reports/misc/department-wise', [\App\Http\Controllers\ReportsController::class, 'department_wise'])->name('reports.misc.category-wise');
     Route::get('reports/misc/department-wise-two', [\App\Http\Controllers\ReportsController::class, 'department_wise_two'])->name('reports.misc.category-wise-two');
 
+    Route::get('reports/ssp/claims', [\App\Http\Controllers\ReportsController::class, 'sspClaims'])->name('reports.ssp.claims');
+
     // Process and Restore Invoice Routes
     Route::get('/process', [\App\Http\Controllers\ProcessInvoicesController::class, 'process'])->name('invoices.process');
     Route::get('/restore', [\App\Http\Controllers\ProcessInvoicesController::class, 'restore'])->name('invoices.restore');
