@@ -135,7 +135,7 @@
                         </a>
                     @endcan
 
-                    @can('view reports')
+                    @can('view opd reports')
                         <a href="{{ route('reports.opd.user-wise') }}"
                             class="transform  hover:scale-105 transition duration-300 shadow-xl rounded-lg col-span-12 sm:col-span-6 xl:col-span-4 intro-y bg-white">
                             <div class="p-5">
