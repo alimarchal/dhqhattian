@@ -331,6 +331,31 @@ return new class extends Migration
         });
         // =====================================================================
 
+        // Step G2: Dr. Khawaja Moosa — dashboard + reports only (no admin access)
+        // =====================================================================
+        $moosa = User::where('email', 'khawaja.moosa@yahoo.com')->first();
+        if ($moosa) {
+            // Remove Administrator role
+            $moosa->syncRoles([]);
+
+            // Give only dashboard + all report permissions
+            $moosaPermissions = Permission::where('guard_name', 'sanctum')
+                ->whereIn('name', [
+                    'view dashboard',
+                    'view dashboard statistics',
+                    'view reports',
+                    'view opd reports',
+                    'view daily reports',
+                    'view department reports',
+                    'view admission reports',
+                    'view emergency reports',
+                    'view ssp reports',
+                ])
+                ->get();
+            $moosa->syncPermissions($moosaPermissions);
+        }
+        // =====================================================================
+
         // Step H: Reset permission cache
         app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
     }
