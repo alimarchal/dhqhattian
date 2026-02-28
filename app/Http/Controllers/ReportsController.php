@@ -38,20 +38,20 @@ class ReportsController extends Controller
 
         $non_entitled = DB::table('chits')
             ->join('departments', 'chits.department_id', '=', 'departments.id')
-            ->select('departments.name', DB::raw('COUNT(chits.government_non_gov) AS Non_Entitiled'), DB::raw('SUM(chits.amount) as Revenue, SUM(chits.amount_hif) as Revenue_HIF'))
+            ->select('departments.name', DB::raw('COUNT(chits.government_non_gov) AS "Non_Entitiled"'), DB::raw('SUM(chits.amount) as "Revenue", SUM(chits.amount_hif) as "Revenue_HIF"'))
             ->whereBetween('chits.issued_date', [$date_start_at, $date_end_at])
             ->where('chits.government_non_gov', 0)
             ->whereIn('ipd_opd', [1, 0])
-            ->groupBy('chits.department_id')
+            ->groupBy('chits.department_id', 'departments.name')
             ->get();
 
         $entitled = DB::table('chits')
             ->join('departments', 'chits.department_id', '=', 'departments.id')
-            ->select('departments.name', DB::raw('COUNT(chits.government_non_gov) AS Entitiled'), DB::raw('SUM(chits.amount) as Revenue, SUM(chits.amount_hif) as Revenue_HIF'))
+            ->select('departments.name', DB::raw('COUNT(chits.government_non_gov) AS "Entitiled"'), DB::raw('SUM(chits.amount) as "Revenue", SUM(chits.amount_hif) as "Revenue_HIF"'))
             ->whereBetween('chits.issued_date', [$date_start_at, $date_end_at])
             ->where('chits.government_non_gov', 1)
             ->whereIn('ipd_opd', [1, 0])
-            ->groupBy('chits.department_id')
+            ->groupBy('chits.department_id', 'departments.name')
             ->get();
 
         // Update the $data array with figures from $non_entitled and $entitled queries
@@ -95,7 +95,10 @@ class ReportsController extends Controller
             $roleName = 'Front Desk/Receptionist';
             $users = \App\Models\User::role($roleName)->where('id', $user_id)->get();
         } else {
-            $users = \App\Models\User::where('id', '!=', 2)->get();
+            // Exclude Super-Admin role only
+            $users = \App\Models\User::whereDoesntHave('roles', function ($query) {
+                $query->where('name', 'Super-Admin');
+            })->get();
         }
 
         foreach ($users as $user) {
@@ -118,11 +121,9 @@ class ReportsController extends Controller
 
         if (\Auth::user()->hasRole('Auditor')) {
             return view('reports.auditor.reports-daily-ipd', compact('data'));
-        } elseif (\Auth::user()->hasRole(['Administrator', 'Front Desk/Receptionist'])) {
-
-            return view('reports.reports-daily-ipd', compact('data'));
         }
 
+        return view('reports.reports-daily-ipd', compact('data'));
     }
 
     public function index()

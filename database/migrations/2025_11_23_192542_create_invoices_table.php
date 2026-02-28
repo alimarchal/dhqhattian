@@ -18,7 +18,9 @@ return new class extends Migration
             $table->decimal('total_amount', 15)->default(0);
             $table->decimal('hif_amount', 14)->default(0);
             $table->decimal('govt_amount', 14)->default(0);
+            $table->decimal('actual_total_amount', 15, 2)->default(0);
             $table->boolean('government_non_government')->default(false);
+            $table->softDeletes();
             $table->string('government_department_id', 10)->nullable();
             $table->string('government_card_no', 10)->nullable();
             $table->timestamps();

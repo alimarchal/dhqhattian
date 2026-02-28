@@ -23,6 +23,8 @@ return new class extends Migration
             $table->decimal('amount', 15);
             $table->decimal('amount_hif', 14)->default(0);
             $table->decimal('govt_amount', 14)->nullable()->default(0);
+            $table->decimal('actual_amount', 15, 2)->default(0);
+            $table->string('sehat_sahulat_visit_no')->nullable();
             $table->boolean('ipd_opd');
             $table->boolean('payment_status')->default(true);
             $table->boolean('government_non_gov')->nullable();
