@@ -7,6 +7,8 @@ use App\Models\Department;
 use App\Models\Patient;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use PHPUnit\Framework\Attributes\Test;
+use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 class SpecialistFeesReportTest extends TestCase
@@ -19,16 +21,16 @@ class SpecialistFeesReportTest extends TestCase
     {
         parent::setUp();
 
-        $this->user = User::create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
-            'password' => bcrypt('password'),
-        ]);
+        Role::findOrCreate('Super-Admin', 'sanctum');
+
+        $this->user = User::factory()->withPersonalTeam()->create();
+
+        $this->user->assignRole('Super-Admin');
 
         $this->actingAs($this->user);
     }
 
-    /** @test */
+    #[Test]
     public function it_shows_all_specialist_departments_even_with_no_data()
     {
         Department::create(['name' => 'ENT Specialist']);
@@ -46,7 +48,7 @@ class SpecialistFeesReportTest extends TestCase
         $this->assertCount(2, $stats);
     }
 
-    /** @test */
+    #[Test]
     public function it_correctly_calculates_govt_amount_for_specialist_fees()
     {
         $spec = Department::create(['name' => 'Skin Specialist']);
@@ -64,6 +66,7 @@ class SpecialistFeesReportTest extends TestCase
             'govt_amount' => 70.00,
             'issued_date' => now(),
             'government_non_gov' => 0,
+            'ipd_opd' => false,
         ]);
 
         $response = $this->get(route('reports.opd.specialist-fees'));
@@ -74,7 +77,7 @@ class SpecialistFeesReportTest extends TestCase
         $this->assertEquals(70.00, $specStats['total_fees']);
     }
 
-    /** @test */
+    #[Test]
     public function it_filters_by_specific_specialist_department()
     {
         $spec1 = Department::create(['name' => 'ENT Specialist']);

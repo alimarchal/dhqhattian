@@ -11,14 +11,14 @@ use App\Models\Patient;
 use App\Models\PatientTest;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
+use Spatie\Permission\Models\Role;
 
 beforeEach(function () {
-    $this->user = User::create([
-        'name' => 'Test Report User',
-        'email' => 'test-ssp-report@example.com',
-        'password' => Hash::make('password'),
-    ]);
+    Role::findOrCreate('Super-Admin', 'sanctum');
+
+    $this->user = User::factory()->withPersonalTeam()->create();
+
+    $this->user->assignRole('Super-Admin');
 
     DB::table('government_departments')->insertOrIgnore(['id' => 1, 'name' => 'Army', 'created_at' => now(), 'updated_at' => now()]);
     DB::table('government_departments')->insertOrIgnore(['id' => 95, 'name' => 'SEHAT SAHULAT PROGRAM', 'created_at' => now(), 'updated_at' => now()]);

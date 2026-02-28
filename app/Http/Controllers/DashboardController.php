@@ -8,7 +8,7 @@ use App\Models\Department;
 use App\Models\Invoice;
 use App\Models\Patient;
 use Carbon\Carbon;
-use DB;
+use Illuminate\Support\Facades\DB;
 
 class DashboardController extends Controller
 {

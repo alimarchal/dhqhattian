@@ -3,8 +3,9 @@
 namespace App\Providers;
 
 use Carbon\Carbon;
-use DB;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -33,6 +34,16 @@ class AppServiceProvider extends ServiceProvider
                 Auth::logout();
             }
         }
-        //
+
+        // Implicitly grant "Super Admin" role all permissions
+        Gate::before(function ($user, $ability) {
+            if ($user->hasRole('Super-Admin')) {
+                return true;
+            }
+        });
+
+        Gate::after(function ($user, $ability) {
+            return $user->hasRole('Super Admin');
+        });
     }
 }

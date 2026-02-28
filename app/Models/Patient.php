@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use App\Http\Controllers\PatientController;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -13,7 +12,6 @@ class Patient extends Model
 {
     use HasFactory;
     use SoftDeletes;
-    protected $dates = ['deleted_at'];
 
     protected $fillable = [
         'user_id',
@@ -43,7 +41,6 @@ class Patient extends Model
         'sehat_sahulat_visit_no',
     ];
 
-
     public function patient_test_cart()
     {
         return $this->hasMany(PatientTestCart::class);
@@ -66,8 +63,6 @@ class Patient extends Model
 
     /**
      * Get the user that owns the Patient
-     *
-     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
      */
     public function user(): BelongsTo
     {
@@ -76,8 +71,6 @@ class Patient extends Model
 
     /**
      * Get the emergency treatments for the patient
-     *
-     * @return \Illuminate\Database\Eloquent\Relations\HasMany
      */
     public function emergencyTreatments(): HasMany
     {

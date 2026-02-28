@@ -75,7 +75,7 @@
                                 autocomplete="current-password"
                                 placeholder="{{ __('Password') }}"
                                 x-ref="password"
-                                wire:model.defer="password"
+                                wire:model="password"
                                 wire:keydown.enter="logoutOtherBrowserSessions" />
 
                     <x-input-error for="password" class="mt-2" />

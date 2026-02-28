@@ -4,10 +4,12 @@ use App\Models\Chit;
 use App\Models\Department;
 use App\Models\Patient;
 use App\Models\User;
-use Carbon\Carbon;
+use Spatie\Permission\Models\Role;
 
 beforeEach(function () {
-    $this->user = User::factory()->create();
+    Role::findOrCreate('Super-Admin', 'sanctum');
+    $this->user = User::factory()->withPersonalTeam()->create();
+    $this->user->assignRole('Super-Admin');
     $this->actingAs($this->user);
 });
 
