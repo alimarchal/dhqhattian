@@ -68,7 +68,7 @@
                         </div>
                     </div>
                 </a>
-                <a href="{{ route('reports.misc.category-wise') }}"
+                {{-- <a href="{{ route('reports.misc.category-wise') }}"
                     class="transform  hover:scale-105 transition duration-300 shadow-xl rounded-lg col-span-12 sm:col-span-6 xl:col-span-3 intro-y bg-white">
                     <div class="p-5">
                         <div class="grid grid-cols-3 gap-1">
@@ -85,7 +85,7 @@
                             </div>
                         </div>
                     </div>
-                </a>
+                </a> --}}
                 <a href="{{ route('reports.misc.category-wise-two') }}"
                     class="transform  hover:scale-105 transition duration-300 shadow-xl rounded-lg col-span-12 sm:col-span-6 xl:col-span-3 intro-y bg-white">
                     <div class="p-5">
