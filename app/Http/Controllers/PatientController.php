@@ -79,7 +79,7 @@ class PatientController extends Controller
             $dateOfBirth = $request->dob; // Get the provided date of birth from the request
 
             // Check if the user has already provided a date of birth
-            if (!$dateOfBirth) {
+            if (! $dateOfBirth) {
                 if ($yearsMonths === 'Year(s)') {
                     $dateOfBirth = now()->subYears($age)->format('Y-m-d');
                 } elseif ($yearsMonths === 'Month(s)') {
@@ -97,10 +97,10 @@ class PatientController extends Controller
             DB::commit();
         } catch (\Exception $e) {
             DB::rollback();
-            \Illuminate\Support\Facades\Log::error('Patient Creation Error: ' . $e->getMessage());
+            \Illuminate\Support\Facades\Log::error('Patient Creation Error: '.$e->getMessage());
         }
 
-        if (!empty($patient)) {
+        if (! empty($patient)) {
             return to_route('patient.actions', [$patient->id]);
         } else {
             return to_route('patient.index')->with('message', 'There is an error occurred for creating patient');
@@ -168,7 +168,7 @@ class PatientController extends Controller
         $count_chit_of_today++;
 
         if ($count_chit_of_today_limit <= $count_chit_of_today) {
-            return to_route('patient.create-opd')->with('error', 'Today\'s limit has been reached to ' . $count_chit_of_today_limit);
+            return to_route('patient.create-opd')->with('error', 'Today\'s limit has been reached to '.$count_chit_of_today_limit);
         }
 
         DB::beginTransaction();
@@ -181,7 +181,7 @@ class PatientController extends Controller
             $dateOfBirth = $request->dob; // Get the provided date of birth from the request
 
             // Check if the user has already provided a date of birth
-            if (!$dateOfBirth) {
+            if (! $dateOfBirth) {
                 if ($yearsMonths === 'Year(s)') {
                     $dateOfBirth = now()->subYears($age)->format('Y-m-d');
                 } elseif ($yearsMonths === 'Day(s)') {
@@ -234,14 +234,12 @@ class PatientController extends Controller
                     $amount = FeeType::find(108)->amount;
                     $amount_hif = FeeType::find(108)->hif;
                     $fee_type_id = 108;
-                    // all amount goes to government
-                    $govt_amount = $amount;
+                    $govt_amount = $amount - $amount_hif;
                 } elseif ($request->department_id == 23) {
                     $amount = FeeType::find(270)->amount;
                     $amount_hif = FeeType::find(270)->hif;
                     $fee_type_id = 270;
-                    // all amount goes to government
-                    $govt_amount = $amount;
+                    $govt_amount = $amount - $amount_hif;
                 } elseif ($request->department_id == 1) {
                     // For emergency
                     $amount = FeeType::find(1)->amount;
@@ -303,7 +301,7 @@ class PatientController extends Controller
             \Illuminate\Support\Facades\Log::error($e->getMessage());
         }
 
-        if (!empty($chit) && !empty($patient)) {
+        if (! empty($chit) && ! empty($patient)) {
             return to_route('chit.print', [$patient->id, $chit->id]);
         } else {
             return to_route('patient.index')->with('message', 'There is an error occurred for creating patient and chit');
@@ -338,7 +336,7 @@ class PatientController extends Controller
         $count_chit_of_today++;
 
         if ($count_chit_of_today_limit <= $count_chit_of_today) {
-            return to_route('patient.create-ipd')->with('error', 'Today\'s limit has been reached to ' . $count_chit_of_today_limit);
+            return to_route('patient.create-ipd')->with('error', 'Today\'s limit has been reached to '.$count_chit_of_today_limit);
         }
 
         DB::beginTransaction();
@@ -351,7 +349,7 @@ class PatientController extends Controller
             $dateOfBirth = $request->dob; // Get the provided date of birth from the request
 
             // Check if the user has already provided a date of birth
-            if (!$dateOfBirth) {
+            if (! $dateOfBirth) {
                 if ($yearsMonths === 'Year(s)') {
                     $dateOfBirth = now()->subYears($age)->format('Y-m-d');
                 } elseif ($yearsMonths === 'Month(s)') {
@@ -429,7 +427,7 @@ class PatientController extends Controller
             // something went wrong
         }
 
-        if (!empty($chit) && !empty($patient)) {
+        if (! empty($chit) && ! empty($patient)) {
             return to_route('chit.print', [$patient->id, $chit->id]);
         } else {
             return to_route('patient.index')->with('message', 'There is an error occurred for creating patient and chit');
@@ -612,7 +610,7 @@ class PatientController extends Controller
             if ($request->has('admission_form_return') && $request->admission_form_return == 1) {
                 $invoice = Invoice::find($request->admission_no);
 
-                if (!empty($invoice)) {
+                if (! empty($invoice)) {
                     $admission = Admission::find($invoice->id);
                     $admission->status = 'Yes';
                     $admission->save();
@@ -654,10 +652,10 @@ class PatientController extends Controller
         $department = null;
         $fee_category = null;
         $fee_category_main = null;
-        if (!empty($invoice->patient_test_latest->fee_type->feeCategory)) {
+        if (! empty($invoice->patient_test_latest->fee_type->feeCategory)) {
             $department = $invoice->patient_test_latest->fee_type->feeCategory->name;
         }
-        if (!empty($invoice->patient_test_latest->fee_type)) {
+        if (! empty($invoice->patient_test_latest->fee_type)) {
             $fee_category = $invoice->patient_test_latest->fee_type->type;
             $fee_cat_id = FeeCategory::find($invoice->patient_test_latest->fee_type->fee_category_id)->id;
 
@@ -692,10 +690,10 @@ class PatientController extends Controller
         $department = null;
         $fee_category = null;
         $fee_category_main = null;
-        if (!empty($invoice->patient_test_latest->fee_type->feeCategory)) {
+        if (! empty($invoice->patient_test_latest->fee_type->feeCategory)) {
             $department = $invoice->patient_test_latest->fee_type->feeCategory->name;
         }
-        if (!empty($invoice->patient_test_latest->fee_type)) {
+        if (! empty($invoice->patient_test_latest->fee_type)) {
             $fee_category = $invoice->patient_test_latest->fee_type->type;
             $fee_cat_id = FeeCategory::find($invoice->patient_test_latest->fee_type->fee_category_id)->id;
 
@@ -838,7 +836,7 @@ class PatientController extends Controller
             DB::rollBack();
 
             return back()->withInput()
-                ->with('error', 'Failed to record emergency treatment: ' . $e->getMessage());
+                ->with('error', 'Failed to record emergency treatment: '.$e->getMessage());
         }
     }
 }

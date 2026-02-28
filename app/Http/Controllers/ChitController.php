@@ -83,7 +83,7 @@ class ChitController extends Controller
         $chit = null;
         // 46 >= 51
         if ($count_chit_of_today_limit <= $count_chit_of_today) {
-            return to_route('patient.create')->with('error', 'OPD today\'s limit has been reached to maximum limit of ' . $count_chit_of_today_limit . ' as assigned by OPD.');
+            return to_route('patient.create')->with('error', 'OPD today\'s limit has been reached to maximum limit of '.$count_chit_of_today_limit.' as assigned by OPD.');
         }
 
         DB::beginTransaction();
@@ -124,14 +124,12 @@ class ChitController extends Controller
                     $amount = FeeType::find(108)->amount;
                     $amount_hif = FeeType::find(108)->hif;
                     $fee_type_id = 108;
-                    // as all amount goes to government
-                    $govt_amount = $amount;
+                    $govt_amount = $amount - $amount_hif;
                 } elseif ($request->department_id == 23) {
                     $amount = FeeType::find(270)->amount;
                     $amount_hif = FeeType::find(270)->hif;
                     $fee_type_id = 270;
-                    // all amount goes to government
-                    $govt_amount = $amount;
+                    $govt_amount = $amount - $amount_hif;
                 } elseif ($request->department_id == 1) {
                     // For emergency
                     $amount = FeeType::find(1)->amount;
@@ -198,7 +196,7 @@ class ChitController extends Controller
             DB::commit();
         } catch (\Exception $e) {
             DB::rollback();
-            \Illuminate\Support\Facades\Log::error('Issue Chit Error: ' . $e->getMessage());
+            \Illuminate\Support\Facades\Log::error('Issue Chit Error: '.$e->getMessage());
         }
 
         return to_route('chit.print', [$patient->id, $chit->id]);
@@ -234,8 +232,8 @@ class ChitController extends Controller
         $start_date = Carbon::parse($request->start_date)->format('Y-m-d');
         $end_date = Carbon::parse($request->end_date)->format('Y-m-d');
 
-        $date_start_at = $start_date . ' 00:00:00';
-        $date_end_at = $end_date . ' 23:59:59';
+        $date_start_at = $start_date.' 00:00:00';
+        $date_end_at = $end_date.' 23:59:59';
 
         $user = \Auth::user();
         $issued_chits = null;

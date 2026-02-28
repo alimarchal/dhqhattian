@@ -9,14 +9,17 @@
       "mcp__laravel-boost__database-query",
       "Bash(xargs:*)",
       "mcp__laravel-boost__tinker",
-      "mcp__laravel-boost__get-config"
+      "mcp__laravel-boost__get-config",
+      "Bash(psql:*)",
+      "Bash(mysql:*)",
+      "Bash(PGPASSWORD=03008169924 psql:*)"
     ],
     "deny": [],
     "ask": []
   },
+  "enableAllProjectMcpServers": true,
   "enabledMcpjsonServers": [
     "laravel-boost",
     "herd"
-  ],
-  "enableAllProjectMcpServers": true
+  ]
 }

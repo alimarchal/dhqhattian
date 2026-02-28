@@ -268,7 +268,7 @@
                                 <td class="border-black border px-4 py-2 text-center font-bold print:hidden">{{ number_format($non_entitled,0) }}</td>
                                 <td class="border-black border px-4 py-2 text-center font-bold print:hidden">{{ number_format($hif,2) }}</td>
                                 <td class="border-black border px-4 py-2 text-center font-bold">{{ number_format($govt,2) }}</td>
-                                <td class="border-black border px-4 py-2 text-center font-bold ">{{ number_format($govt,2) }}</td>
+                                <td class="border-black border px-4 py-2 text-center font-bold">{{ number_format($total,2) }}</td>
                             </tr>
                             </tfoot>
 
