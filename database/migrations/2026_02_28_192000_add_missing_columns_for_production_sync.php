@@ -4,6 +4,8 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Spatie\Permission\Models\Permission;
+use Spatie\Permission\Models\Role;
 
 return new class extends Migration
 {
@@ -78,6 +80,242 @@ return new class extends Migration
         foreach ($orphanedMigrations as $migration) {
             DB::table('migrations')->where('migration', $migration)->delete();
         }
+
+        // =====================================================================
+        // 7. PERMISSIONS SYNC — Comment out this section after first run
+        //    to prevent re-running on every migrate.
+        // =====================================================================
+        $this->syncPermissionsAndRoles();
+        // =====================================================================
+    }
+
+    /**
+     * Sync all permissions, roles, and assign permissions to users.
+     * This replaces old generic permissions with new granular ones.
+     *
+     * COMMENT OUT the call to this method in up() after first production run.
+     */
+    private function syncPermissionsAndRoles(): void
+    {
+        // Reset cached roles and permissions
+        app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
+
+        $guards = ['web', 'sanctum'];
+
+        // New granular permissions
+        $permissions = [
+            // Dashboard
+            'view dashboard',
+            'view dashboard statistics',
+
+            // Patients
+            'view patients',
+            'create patients',
+            'edit patients',
+            'delete patients',
+
+            // Chits/OPD
+            'view chits',
+            'create chits',
+            'edit chits',
+            'delete chits',
+
+            // Invoices
+            'view invoices',
+            'create invoices',
+            'edit invoices',
+            'delete invoices',
+
+            // Admissions
+            'view admissions',
+            'create admissions',
+            'edit admissions',
+            'delete admissions',
+
+            // Reports
+            'view reports',
+            'view opd reports',
+            'view daily reports',
+            'view department reports',
+            'view admission reports',
+            'view emergency reports',
+            'view ssp reports',
+
+            // Departments
+            'view departments',
+            'create departments',
+            'edit departments',
+            'delete departments',
+
+            // Government Departments
+            'view government departments',
+            'create government departments',
+            'edit government departments',
+            'delete government departments',
+
+            // Fee Types
+            'view fee types',
+            'create fee types',
+            'edit fee types',
+            'delete fee types',
+
+            // Fee Categories
+            'view fee categories',
+            'create fee categories',
+            'edit fee categories',
+            'delete fee categories',
+
+            // Users
+            'view users',
+            'create users',
+            'edit users',
+            'delete users',
+
+            // Roles & Permissions
+            'view roles',
+            'create roles',
+            'edit roles',
+            'delete roles',
+            'view permissions',
+            'manage permissions',
+            'assign permissions',
+
+            // System Data
+            'view diseases',
+            'manage diseases',
+            'view districts',
+            'manage districts',
+            'view tehsils',
+            'manage tehsils',
+            'view admission wards',
+            'manage admission wards',
+        ];
+
+        // Step A: Remove ALL old role->permission assignments
+        DB::table('role_has_permissions')->truncate();
+
+        // Step B: Remove ALL old user->permission assignments
+        DB::table('model_has_permissions')->truncate();
+
+        // Step C: Delete old generic permissions that are no longer used
+        Permission::whereNotIn('name', $permissions)->delete();
+
+        // Step D: Create/update all new granular permissions
+        foreach ($guards as $guard) {
+            foreach ($permissions as $permission) {
+                Permission::updateOrCreate(
+                    ['name' => $permission, 'guard_name' => $guard],
+                    ['name' => $permission, 'guard_name' => $guard]
+                );
+            }
+        }
+
+        // Step E: Create/update all roles
+        $roleNames = [
+            'Administrator',
+            'Auditor',
+            'Doctor/Physician',
+            'Front Desk/Receptionist',
+            'Insurance Coordinator/Billing Specialist',
+            'IT Support/System Administrator',
+            'Laboratory Technician',
+            'Manager/Executive',
+            'Nurse',
+            'Patient/Portal User',
+            'Pharmacist',
+            'Radiologist/Imaging Technician',
+            'Super-Admin',
+        ];
+
+        foreach ($guards as $guard) {
+            foreach ($roleNames as $roleName) {
+                Role::updateOrCreate(
+                    ['name' => $roleName, 'guard_name' => $guard],
+                    ['name' => $roleName, 'guard_name' => $guard]
+                );
+            }
+        }
+
+        // Step F: Assign permissions to roles
+        foreach ($guards as $guard) {
+            // Super-Admin gets ALL permissions
+            $superAdmin = Role::where('name', 'Super-Admin')->where('guard_name', $guard)->first();
+            if ($superAdmin) {
+                $superAdmin->syncPermissions(Permission::where('guard_name', $guard)->get());
+            }
+
+            // Administrator gets all except role/permission management
+            $admin = Role::where('name', 'Administrator')->where('guard_name', $guard)->first();
+            if ($admin) {
+                $adminPermissions = Permission::where('guard_name', $guard)
+                    ->whereNotIn('name', [
+                        'view roles', 'create roles', 'edit roles', 'delete roles',
+                        'view permissions', 'manage permissions', 'assign permissions',
+                    ])
+                    ->get();
+                $admin->syncPermissions($adminPermissions);
+            }
+
+            // Front Desk/Receptionist — daily operational permissions
+            $frontDesk = Role::where('name', 'Front Desk/Receptionist')->where('guard_name', $guard)->first();
+            if ($frontDesk) {
+                $frontDeskPermissions = Permission::where('guard_name', $guard)
+                    ->whereIn('name', [
+                        'view dashboard',
+                        'view dashboard statistics',
+                        'view patients',
+                        'create patients',
+                        'edit patients',
+                        'view chits',
+                        'create chits',
+                        'edit chits',
+                        'view invoices',
+                        'create invoices',
+                        'view admissions',
+                        'create admissions',
+                        'edit admissions',
+                        'view reports',
+                        'view opd reports',
+                        'view daily reports',
+                        'view departments',
+                        'view government departments',
+                        'view fee types',
+                        'view fee categories',
+                    ])
+                    ->get();
+                $frontDesk->syncPermissions($frontDeskPermissions);
+            }
+
+            // Auditor — read-only access to everything + reports
+            $auditor = Role::where('name', 'Auditor')->where('guard_name', $guard)->first();
+            if ($auditor) {
+                $auditorPermissions = Permission::where('guard_name', $guard)
+                    ->whereIn('name', [
+                        'view dashboard',
+                        'view dashboard statistics',
+                        'view patients',
+                        'view chits',
+                        'view invoices',
+                        'view admissions',
+                        'view reports',
+                        'view opd reports',
+                        'view daily reports',
+                        'view department reports',
+                        'view admission reports',
+                        'view emergency reports',
+                        'view ssp reports',
+                        'view departments',
+                        'view government departments',
+                        'view fee types',
+                        'view fee categories',
+                    ])
+                    ->get();
+                $auditor->syncPermissions($auditorPermissions);
+            }
+        }
+
+        // Step G: Reset permission cache
+        app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
     }
 
     /**
