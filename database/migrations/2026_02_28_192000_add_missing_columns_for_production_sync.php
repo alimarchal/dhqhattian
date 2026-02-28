@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\User;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
@@ -314,7 +315,31 @@ return new class extends Migration
             }
         }
 
-        // Step G: Reset permission cache
+        // Step G: Assign essential permissions DIRECTLY to ALL users
+        //         These are direct user permissions (removable via admin UI).
+        // =====================================================================
+        $essentialPermissions = [
+            'view dashboard',
+            'view patients',
+            'create patients',
+            'view chits',
+            'create chits',
+            'view invoices',
+            'create invoices',
+            'view admissions',
+            'create admissions',
+        ];
+
+        $essentialPerms = Permission::where('guard_name', 'sanctum')
+            ->whereIn('name', $essentialPermissions)
+            ->get();
+
+        User::all()->each(function ($user) use ($essentialPerms) {
+            $user->givePermissionTo($essentialPerms);
+        });
+        // =====================================================================
+
+        // Step H: Reset permission cache
         app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
     }
 
