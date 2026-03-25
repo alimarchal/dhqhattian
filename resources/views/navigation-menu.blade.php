@@ -39,13 +39,13 @@
                     @can('view government departments')
                         <x-nav-link href="{{ route('governmentDepartment.index') }}"
                             :active="request()->routeIs('governmentDepartment.*')">
-                            {{ __('Government Departments') }}
+                            {{ __('Govt Dept') }}
                         </x-nav-link>
                     @endcan
 
                     @can('view fee types')
                         <x-nav-link href="{{ route('feeType.index') }}" :active="request()->routeIs('feeType.*')">
-                            {{ __('Hospital Fees') }}
+                            {{ __('Hosp Fees') }}
                         </x-nav-link>
                     @endcan
 
