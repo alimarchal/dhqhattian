@@ -11,6 +11,7 @@ use App\Models\Patient;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Spatie\QueryBuilder\AllowedFilter;
 use Spatie\QueryBuilder\QueryBuilder;
 
@@ -206,7 +207,7 @@ class ChitController extends Controller
             DB::commit();
         } catch (\Exception $e) {
             DB::rollback();
-            \Illuminate\Support\Facades\Log::error('Issue Chit Error: '.$e->getMessage());
+            Log::error('Issue Chit Error: '.$e->getMessage());
         }
 
         return to_route('chit.print', [$patient->id, $chit->id]);
@@ -226,11 +227,10 @@ class ChitController extends Controller
                 //                ->where('user_id', $user->id)->where('ipd_opd', 1)->whereDate('issued_date', Carbon::today())
 //                ->orderByDesc('created_at') // Corrected 'DSEC' to 'DESC'
                 ->paginate(500);
-        } elseif ($user->hasRole(['Administrator'])) {
+        } elseif ($user->hasRole(['Super-Admin', 'Administrator'])) {
             $issued_chits = QueryBuilder::for(Chit::class)
                 ->allowedFilters(['patient_id', 'fee_type_id', 'government_department_id', 'issued_date', 'ipd_opd', 'government_card_no', AllowedFilter::exact('government_non_gov'), AllowedFilter::exact('id'), AllowedFilter::exact('department_id')])
                 ->whereDate('issued_date', Carbon::today())
-                //                ->orderByDesc('created_at') // Corrected 'DSEC' to 'DESC'
                 ->paginate(1000);
         }
 
@@ -247,7 +247,7 @@ class ChitController extends Controller
 
         $user = \Auth::user();
         $issued_chits = null;
-        if ($user->hasRole(['Administrator'])) {
+        if ($user->hasRole(['Super-Admin', 'Administrator'])) {
             $issued_chits = QueryBuilder::for(Chit::class)->with('user', 'patient', 'department')
                 ->allowedFilters([
                     AllowedFilter::exact('department_id'),

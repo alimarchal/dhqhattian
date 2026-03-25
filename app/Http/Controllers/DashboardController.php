@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\Admission;
 use App\Models\Chit;
 use App\Models\Department;
+use App\Models\FeeCategory;
+use App\Models\FeeType;
 use App\Models\Invoice;
 use App\Models\Patient;
 use Carbon\Carbon;
@@ -41,15 +43,15 @@ class DashboardController extends Controller
             $admission_weekly_report[$date] = 0;
         }
 
-        foreach (\App\Models\FeeCategory::whereIn('id', [8, 9, 10, 11, 12])->pluck('name') as $name) {
+        foreach (FeeCategory::whereIn('id', [8, 9, 10, 11, 12])->pluck('name') as $name) {
             $patient_test_daily_report[$name] = 0;
         }
 
-        foreach (\App\Models\FeeType::whereIn('id', [9, 10])->pluck('type') as $type) {
+        foreach (FeeType::whereIn('id', [9, 10])->pluck('type') as $type) {
             $patient_test_daily_report_op[$type] = 0;
         }
 
-        foreach (\App\Models\FeeType::whereIn('id', [6, 7, 8])->pluck('type') as $type) {
+        foreach (FeeType::whereIn('id', [6, 7, 8])->pluck('type') as $type) {
             $patient_test_daily_report_rd[$type] = 0;
         }
 
@@ -63,7 +65,7 @@ class DashboardController extends Controller
 
             $issued_invoices_revenue = Invoice::where('user_id', $user->id)->whereDate('created_at', Carbon::today())->sum('total_amount');
 
-        } elseif ($user->hasRole(['Administrator'])) {
+        } elseif ($user->hasRole(['Super-Admin', 'Administrator'])) {
 
             $issued_chits = Chit::whereDate('issued_date', Carbon::today())->count();
             $today_revenue = Chit::whereDate('issued_date', Carbon::today())->sum('amount');

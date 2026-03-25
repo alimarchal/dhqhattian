@@ -38,7 +38,7 @@
                         </tr>
                         </thead>
                         <tbody>
-                        @foreach($issued_chits->sortByDesc('issued_date') as $chit)
+                        @foreach(($issued_chits ?? collect())->sortByDesc('issued_date') as $chit)
                             <tr class="border-black">
                                 <td class="border-black border px-4 py-2">{{$loop->iteration}}</td>
                                 <td class="border-black border px-4 py-2">{{date('y')}}-{{ $chit->id .'-' . $chit->patient_id}}</td>
