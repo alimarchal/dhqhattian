@@ -25,7 +25,7 @@
     @endif
 
     @if($isGovernment == 95)
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
              <div>
                 <label for="sehat_sahulat_visit_no" class="block text-red-500 font-bold mb-2">Visit ID # Sehat Sahulat Program</label>
                 <input type="text" name="sehat_sahulat_visit_no" id="sehat_sahulat_visit_no" value="{{ old('sehat_sahulat_visit_no') }}" class="w-full px-3 py-2 border rounded-md text-gray-700 focus:outline-none focus:border-blue-500" placeholder="Enter Visit ID">
@@ -34,6 +34,12 @@
             <div>
                 <label for="sehat_sahulat_patient_id" class="block text-red-500 font-bold mb-2">Patient ID Sehat Sahulat Program</label>
                 <input type="text" name="sehat_sahulat_patient_id" id="sehat_sahulat_patient_id" value="{{ old('sehat_sahulat_patient_id') }}" class="w-full px-3 py-2 border rounded-md text-gray-700 focus:outline-none focus:border-blue-500" placeholder="Enter Patient ID">
+            </div>
+
+            <div>
+                <label for="ssp_cnic" class="block text-red-500 font-bold mb-2">CNIC (Required for SSP)</label>
+                <input type="text" name="cnic" id="ssp_cnic" value="{{ old('cnic', isset($patient) ? $patient->cnic : '') }}" class="w-full px-3 py-2 border rounded-md text-gray-700 focus:outline-none focus:border-blue-500" placeholder="00000-0000000-0"
+                    x-on:input="let v=$event.target.value.replace(/\D/g,'').slice(0,13);$event.target.value=v.replace(/(\d{5})(\d{7})(\d{1})/,'$1-$2-$3')">
             </div>
 
              <div>
@@ -105,14 +111,18 @@
 
         });
 
-        const cnicInput = document.getElementById("cnic");
-        cnicInput.addEventListener("input", (event) => {
-            let cnic = event.target.value;
-            cnic = cnic.replace(/\D/g, ""); // Remove all non-numeric characters
-            cnic = cnic.slice(0, 13); // Trim to 13 digits
-            cnic = cnic.replace(/(\d{5})(\d{7})(\d{1})/, "$1-$2-$3"); // Add hyphens
-            event.target.value = cnic;
-        });
+        function applyCnicMask(inputEl) {
+            if (!inputEl) return;
+            inputEl.addEventListener("input", (event) => {
+                let cnic = event.target.value;
+                cnic = cnic.replace(/\D/g, "");
+                cnic = cnic.slice(0, 13);
+                cnic = cnic.replace(/(\d{5})(\d{7})(\d{1})/, "$1-$2-$3");
+                event.target.value = cnic;
+            });
+        }
+        applyCnicMask(document.getElementById("cnic"));
+        applyCnicMask(document.getElementById("ssp_cnic"));
 
         const mobileInput = document.getElementById("mobile");
         mobileInput.addEventListener("input", (event) => {

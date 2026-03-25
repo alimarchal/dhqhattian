@@ -74,6 +74,16 @@ class ChitController extends Controller
                     }
                 },
             ],
+            'cnic' => [
+                'nullable',
+                'string',
+                'max:15',
+                function ($attribute, $value, $fail) use ($request) {
+                    if ($request->government_department_id == 95 && empty($value)) {
+                        $fail('CNIC is required for Sehat Sahulat Program.');
+                    }
+                },
+            ],
         ]);
 
         // login user id capture
@@ -181,6 +191,7 @@ class ChitController extends Controller
                     'sehat_sahulat_patient_id' => $request->sehat_sahulat_patient_id,
                     'government_department_id' => 95,
                     'government_non_gov' => 1,
+                    'cnic' => $request->cnic,
                 ]);
             }
 

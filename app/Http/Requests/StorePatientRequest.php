@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use Illuminate\Contracts\Validation\Rule;
 use Illuminate\Foundation\Http\FormRequest;
 
 class StorePatientRequest extends FormRequest
@@ -17,7 +18,7 @@ class StorePatientRequest extends FormRequest
     /**
      * Get the validation rules that apply to the request.
      *
-     * @return array<string, \Illuminate\Contracts\Validation\Rule|array|string>
+     * @return array<string, Rule|array|string>
      */
     public function rules(): array
     {
@@ -30,7 +31,6 @@ class StorePatientRequest extends FormRequest
 
             'age' => 'required|integer|min:0',
             'years_months' => 'required_if:age,!=,null|in:Year(s),Month(s),Day(s)',
-
 
             'government_non_gov' => 'required',
             'government_department_id' => 'required_with:government_card_no,designation,sehat_sahulat_visit_no,sehat_sahulat_patient_id',
@@ -70,6 +70,16 @@ class StorePatientRequest extends FormRequest
                     }
                 },
             ],
+            'cnic' => [
+                'nullable',
+                'string',
+                'max:15',
+                function ($attribute, $value, $fail) {
+                    if ($this->government_department_id == 95 && empty($value)) {
+                        $fail('CNIC is required for Sehat Sahulat Program.');
+                    }
+                },
+            ],
         ];
     }
 
@@ -86,5 +96,4 @@ class StorePatientRequest extends FormRequest
             'years_months.required_if' => 'The Years/Months field is required when Age is provided.',
         ];
     }
-
 }
