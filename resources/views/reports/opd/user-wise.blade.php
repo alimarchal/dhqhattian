@@ -1,3 +1,8 @@
+@php
+    $showHif = request('show_hif', 'yes') !== 'no';
+    // When HIF is hidden only the Govt part (amount - HIF) is counted.
+    $amt = fn ($c) => $showHif ? $c->amount : $c->amount - $c->amount_hif;
+@endphp
 <x-app-layout>
     @section('custom_header')
         <style>
@@ -133,6 +138,15 @@
                         </select>
                     </div>
 
+                    <div>
+                        <label for="show_hif" class="block text-gray-700 font-bold mb-2">Show HIF</label>
+                        <select name="show_hif" id="show_hif"
+                            class="w-full px-3 py-2 border rounded-md text-gray-700 focus:outline-none focus:border-blue-500">
+                            <option value="yes" @selected($showHif)>Yes</option>
+                            <option value="no" @selected(! $showHif)>No</option>
+                        </select>
+                    </div>
+
                     <div class="flex items-center pt-7">
                         <input type="checkbox" name="specialists_only" id="specialists_only" value="on"
                             {{ request('specialists_only') == 'on' ? 'checked' : '' }}
@@ -177,7 +191,7 @@
                         User Wise OPD Report from {{ \Carbon\Carbon::parse($start_date)->format('d-M-Y') }} to
                         {{ \Carbon\Carbon::parse($end_date)->format('d-M-Y') }}
                         <br>
-                        <span>Software Developed By SeeChange Innovative - Contact No: 0300-8169924</span>
+                        <span>Software Developed By SeeChange Innovative - Contact No: 0335-9991441</span>
                     </p>
 
                     <table class="report-table">
@@ -193,7 +207,7 @@
                                 <th style="width: 85px;">Issue Date</th>
                                 <th style="width: 25px;">Ent.</th>
                                 <th style="width: 25px;">Non-Ent.</th>
-                                <th style="width: 50px;">Amount</th>
+                                <th style="width: 50px;">Amount{{ $showHif ? '' : ' (Govt)' }}</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -214,7 +228,7 @@
                                 @endphp
                                 @foreach ($userChits as $index => $chit)
                                     @php
-                                        $userTotal += $chit->amount;
+                                        $userTotal += $amt($chit);
                                         $isSpec = str_contains(strtolower($chit->department->name), 'specialist');
                                         
                                         if ($chit->government_non_gov == 1) {
@@ -272,7 +286,7 @@
                                             {{ $chit->government_non_gov == 0 ? 'Yes' : '-' }}
                                         </td>
                                         <td class="text-right" style="vertical-align: middle;">
-                                            {{ number_format($chit->amount, 2) }}</td>
+                                            {{ number_format($amt($chit), 2) }}</td>
                                     </tr>
                                 @endforeach
                                 <tr class="bg-gray-50 font-bold" style="font-size: 9px;">
@@ -304,7 +318,7 @@
                                 </th>
                                 <th class="text-center font-bold">{{ $chits->where('government_non_gov', 1)->count() }}</th>
                                 <th class="text-center font-bold">{{ $chits->where('government_non_gov', 0)->count() }}</th>
-                                <th class="text-right font-bold">{{ number_format($chits->sum('amount'), 2) }}</th>
+                                <th class="text-right font-bold">{{ number_format($chits->sum($amt), 2) }}</th>
                             </tr>
                         </tfoot>
                     </table>
@@ -324,7 +338,7 @@
                                     <th colspan="2" class="text-center">Specialist</th>
                                     <th colspan="2" class="text-center">Others (Normal OPD)</th>
                                     <th rowspan="2" class="text-center">Total Count</th>
-                                    <th rowspan="2" class="text-center">Total Amount</th>
+                                    <th rowspan="2" class="text-center">Total Amount{{ $showHif ? '' : ' (Govt)' }}</th>
                                 </tr>
                                 <tr class="bg-gray-50">
                                     <th class="text-center">Ent.</th>
@@ -348,7 +362,7 @@
                                         <td class="text-center px-2 py-1">{{ $uOtherEnt }}</td>
                                         <td class="text-center px-2 py-1">{{ $uOtherNon }}</td>
                                         <td class="text-center px-2 py-1 font-bold">{{ $userChits->count() }}</td>
-                                        <td class="text-right px-2 py-1 font-bold">{{ number_format($userChits->sum('amount'), 2) }}</td>
+                                        <td class="text-right px-2 py-1 font-bold">{{ number_format($userChits->sum($amt), 2) }}</td>
                                     </tr>
                                 @endforeach
                             </tbody>
@@ -360,7 +374,7 @@
                                     <td class="text-center px-2 py-1">{{ $chits->filter(fn($c) => !str_contains(strtolower($c->department->name), 'specialist') && $c->government_non_gov == 1)->count() }}</td>
                                     <td class="text-center px-2 py-1">{{ $chits->filter(fn($c) => !str_contains(strtolower($c->department->name), 'specialist') && $c->government_non_gov == 0)->count() }}</td>
                                     <td class="text-center px-2 py-1">{{ $chits->count() }}</td>
-                                    <td class="text-right px-2 py-1">{{ number_format($chits->sum('amount'), 2) }}</td>
+                                    <td class="text-right px-2 py-1">{{ number_format($chits->sum($amt), 2) }}</td>
                                 </tr>
                             </tfoot>
                         </table>
@@ -389,15 +403,15 @@
                                     </tr>
                                     <tr class="bg-gray-50">
                                         <td class="px-2 py-1">Entitled Specialist Amount</td>
-                                        <td class="text-right font-bold px-2 py-1">{{ number_format($entitledSpecialists->sum('amount'), 2) }}</td>
+                                        <td class="text-right font-bold px-2 py-1">{{ number_format($entitledSpecialists->sum($amt), 2) }}</td>
                                     </tr>
                                     <tr class="bg-gray-50">
                                         <td class="px-2 py-1">Non-Entitled Specialist Amount</td>
-                                        <td class="text-right font-bold px-2 py-1">{{ number_format($nonEntitledSpecialists->sum('amount'), 2) }}</td>
+                                        <td class="text-right font-bold px-2 py-1">{{ number_format($nonEntitledSpecialists->sum($amt), 2) }}</td>
                                     </tr>
                                     <tr class="bg-gray-100 font-extrabold">
                                         <td class="px-2 py-1">Total Specialist Revenue</td>
-                                        <td class="text-right px-2 py-1">{{ number_format($specialistChits->sum('amount'), 2) }}</td>
+                                        <td class="text-right px-2 py-1">{{ number_format($specialistChits->sum($amt), 2) }}</td>
                                     </tr>
                                 </tbody>
                             </table>

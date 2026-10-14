@@ -57,19 +57,19 @@
                         <select name="user_id" id="user_id" class="w-full px-3 py-2 border rounded-md text-gray-700 focus:outline-none focus:border-blue-500">
                             <option value="">None</option>
                             @foreach(\App\Models\User::role('Front Desk/Receptionist')->get() as $user)
-                                <option value="{{ $user->id }}">{{ $user->name }}</option>
+                                <option value="{{ $user->id }}" @selected(request('user_id') == $user->id)>{{ $user->name }}</option>
                             @endforeach
                         </select>
                     </div>
 
                     <div>
                         <label for="start_date" class="block text-gray-700 font-bold mb-2">Start Date</label>
-                        <input type="date" name="start_date" value="{{ request('filter.start_date') }}" id="start_date" class="w-full px-3 py-2 border rounded-md text-gray-700 focus:outline-none focus:border-blue-500" placeholder="Enter name">
+                        <input type="date" name="start_date" value="{{ request('start_date') }}" id="start_date" class="w-full px-3 py-2 border rounded-md text-gray-700 focus:outline-none focus:border-blue-500" placeholder="Enter name">
                     </div>
 
                     <div>
                         <label for="end_date" class="block text-gray-700 font-bold mb-2">End Date</label>
-                        <input type="date" name="end_date" value="{{ request('filter.end_date') }}" id="end_date" class="w-full px-3 py-2 border rounded-md text-gray-700 focus:outline-none focus:border-blue-500" placeholder="Enter name">
+                        <input type="date" name="end_date" value="{{ request('end_date') }}" id="end_date" class="w-full px-3 py-2 border rounded-md text-gray-700 focus:outline-none focus:border-blue-500" placeholder="Enter name">
                     </div>
 
 
@@ -120,13 +120,13 @@
                             <p class="text-center font-extrabold mb-4">
                                 Report from {{ \Carbon\Carbon::parse(request('start_date'))->format('d-M-Y') }} to {{ \Carbon\Carbon::parse(request('end_date'))->format('d-M-Y') }}
                                 <br>
-                                <span>Software Developed By SeeChange Innovative - Contact No: 0300-8169924</span>
+                                <span>Software Developed By SeeChange Innovative - Contact No: 0335-9991441</span>
                             </p>
                         @else
                             <p class="text-center font-extrabold mb-4">
                                 Report as of {{ now()->format('d-M-Y h:m:s') }}  - Daily Revenue User Wise
                                 <br>
-                                <span>Software Developed By SeeChange Innovative - Contact No: 0300-8169924</span>
+                                <span>Software Developed By SeeChange Innovative - Contact No: 0335-9991441</span>
                             </p>
                         @endif
                     <table class="table-auto w-full border-collapse border border-black" style="font-size: 12px!important;">
