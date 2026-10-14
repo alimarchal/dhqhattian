@@ -16,6 +16,8 @@ return new class extends Migration
             $table->unsignedBigInteger('user_id')->index('admissions_user_id_foreign');
             $table->unsignedBigInteger('invoice_id')->index('admissions_invoice_id_foreign');
             $table->unsignedBigInteger('patient_id')->index('admissions_patient_id_foreign');
+            $table->unsignedBigInteger('government_department_id')->nullable();
+            $table->decimal('actual_total_amount', 15, 2)->default(0);
             $table->string('unit_ward')->nullable();
             $table->string('disease')->nullable();
             $table->string('category')->nullable();

@@ -27,6 +27,8 @@ class Chit extends Model
         'government_department_id',
         'government_card_no',
         'designation',
+        'sehat_sahulat_visit_no',
+        'actual_amount',
     ];
 
     public function department(): BelongsTo

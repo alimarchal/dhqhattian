@@ -15,40 +15,100 @@ class RolesAndPermissionsSeeder extends Seeder
 
         $guards = ['web', 'sanctum'];
 
-        $permissionsMap = [
-            ['id' => 5, 'name' => 'Appointment scheduling'],
-            ['id' => 8, 'name' => 'Billing and invoicing'],
-            ['id' => 7, 'name' => 'Check-in/check-out'],
-            ['id' => 23, 'name' => 'Data security and access control'],
-            ['id' => 10, 'name' => 'Diagnosis and treatment planning'],
-            ['id' => 9, 'name' => 'EHR access'],
-            ['id' => 1, 'name' => 'Full system control'],
-            ['id' => 21, 'name' => 'High-level analytics'],
-            ['id' => 26, 'name' => 'HMS software configuration'],
-            ['id' => 19, 'name' => 'Insurance claims management'],
-            ['id' => 6, 'name' => 'Insurance verification'],
-            ['id' => 16, 'name' => 'Laboratory test processing'],
-            ['id' => 18, 'name' => 'Medical imaging management'],
-            ['id' => 14, 'name' => 'Medication administration'],
-            ['id' => 17, 'name' => 'Medication dispensing'],
-            ['id' => 12, 'name' => 'Ordering and reviewing tests and imaging'],
-            ['id' => 13, 'name' => 'Patient monitoring'],
-            ['id' => 4, 'name' => 'Patient registration'],
-            ['id' => 11, 'name' => 'Prescription and medication management'],
-            ['id' => 15, 'name' => 'Recording vital signs'],
-            ['id' => 3, 'name' => 'Role and permission management'],
-            ['id' => 22, 'name' => 'System maintenance'],
-            ['id' => 24, 'name' => 'Technical issue troubleshooting'],
-            ['id' => 2, 'name' => 'User management'],
-            ['id' => 25, 'name' => 'User support'],
-            ['id' => 20, 'name' => 'Viewing personal health records'],
+        // Granular permissions for middleware-based authorization
+        $permissions = [
+            // Dashboard
+            'view dashboard',
+            'view dashboard statistics',
+
+            // Patients
+            'view patients',
+            'create patients',
+            'edit patients',
+            'delete patients',
+
+            // Chits/OPD
+            'view chits',
+            'create chits',
+            'edit chits',
+            'delete chits',
+
+            // Invoices
+            'view invoices',
+            'create invoices',
+            'edit invoices',
+            'delete invoices',
+
+            // Admissions
+            'view admissions',
+            'create admissions',
+            'edit admissions',
+            'delete admissions',
+
+            // Reports
+            'view reports',
+            'view opd reports',
+            'view daily reports',
+            'view department reports',
+            'view admission reports',
+            'view emergency reports',
+            'view ssp reports',
+
+            // Departments
+            'view departments',
+            'create departments',
+            'edit departments',
+            'delete departments',
+
+            // Government Departments
+            'view government departments',
+            'create government departments',
+            'edit government departments',
+            'delete government departments',
+
+            // Fee Types
+            'view fee types',
+            'create fee types',
+            'edit fee types',
+            'delete fee types',
+
+            // Fee Categories
+            'view fee categories',
+            'create fee categories',
+            'edit fee categories',
+            'delete fee categories',
+
+            // Users
+            'view users',
+            'create users',
+            'edit users',
+            'delete users',
+
+            // Roles & Permissions
+            'view roles',
+            'create roles',
+            'edit roles',
+            'delete roles',
+            'view permissions',
+            'manage permissions',
+            'assign permissions',
+
+            // System Data
+            'view diseases',
+            'manage diseases',
+            'view districts',
+            'manage districts',
+            'view tehsils',
+            'manage tehsils',
+            'view admission wards',
+            'manage admission wards',
         ];
 
         foreach ($guards as $guard) {
-            foreach ($permissionsMap as $perm) {
+            foreach ($permissions as $permission) {
                 Permission::updateOrCreate(
-                    ['name' => $perm['name'], 'guard_name' => $guard],
-                    ['name' => $perm['name'], 'guard_name' => $guard]
+                    ['name' => $permission, 'guard_name' => $guard],
+                    ['name' => $permission, 'guard_name' => $guard]
                 );
             }
         }
@@ -75,8 +135,26 @@ class RolesAndPermissionsSeeder extends Seeder
                     ['name' => $role['name'], 'guard_name' => $guard],
                     ['name' => $role['name'], 'guard_name' => $guard]
                 );
-                if ($role['name'] === 'Administrator' || $role['name'] === 'Super-Admin') {
+
+                // Super-Admin gets all permissions
+                if ($role['name'] === 'Super-Admin') {
                     $r->givePermissionTo(Permission::where('guard_name', $guard)->get());
+                }
+
+                // Administrator gets all permissions except roles/permissions management
+                if ($role['name'] === 'Administrator') {
+                    $adminPermissions = Permission::where('guard_name', $guard)
+                        ->whereNotIn('name', [
+                            'view roles',
+                            'create roles',
+                            'edit roles',
+                            'delete roles',
+                            'view permissions',
+                            'manage permissions',
+                            'assign permissions',
+                        ])
+                        ->get();
+                    $r->givePermissionTo($adminPermissions);
                 }
             }
         }

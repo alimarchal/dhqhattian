@@ -19,7 +19,8 @@ class DatabaseSeeder extends Seeder
             FeeSeeder::class,
             DiseaseSeeder::class,
             LocationSeeder::class,
-            GovernmentDepartmentSeeder::class,
+            AdmissionWardSeeder::class,
+            PatientAttendantRelationSeeder::class,
         ]);
     }
 }

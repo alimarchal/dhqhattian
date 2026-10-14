@@ -129,7 +129,7 @@
                         </tr>
                         </thead>
                         <tbody>
-                        @foreach($issued_invoices as $invoice)
+                        @foreach($issued_invoices ?? [] as $invoice)
                             <tr class="border-black">
                                 <td class="border-black border px-4 py-2">{{$loop->iteration}}</td>
                                 <td class="border-black border px-4 py-2 text-center">

@@ -14,6 +14,8 @@ class Admission extends Model
         'user_id',
         'invoice_id',
         'patient_id',
+        'government_department_id',
+        'actual_total_amount',
         'unit_ward',
         'disease',
         'category',

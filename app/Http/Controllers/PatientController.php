@@ -11,11 +11,13 @@ use App\Models\FeeCategory;
 use App\Models\FeeType;
 use App\Models\Invoice;
 use App\Models\Patient;
+use App\Models\PatientEmergencyTreatment;
 use App\Models\PatientTest;
 use App\Models\PatientTestCart;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Spatie\QueryBuilder\AllowedFilter;
 use Spatie\QueryBuilder\QueryBuilder;
 
@@ -85,7 +87,7 @@ class PatientController extends Controller
                 } elseif ($yearsMonths === 'Month(s)') {
                     $dateOfBirth = now()->subMonths($age)->format('Y-m-d');
                 } elseif ($yearsMonths === 'Day(s)') {
-                    $dateOfBirth = now()->subDay($age)->format('Y-m-d');
+                    $dateOfBirth = now()->subDays($age)->format('Y-m-d');
                 } else {
                     // Handle an invalid selection or provide a default value
                     $dateOfBirth = null;
@@ -97,6 +99,7 @@ class PatientController extends Controller
             DB::commit();
         } catch (\Exception $e) {
             DB::rollback();
+            Log::error('Patient Creation Error: '.$e->getMessage());
         }
 
         if (! empty($patient)) {
@@ -112,12 +115,57 @@ class PatientController extends Controller
             'first_name' => 'required',
             'department_id' => 'required',
             'mobile' => 'required|regex:/^03\d{2}-\d{7}$/',
+            'phone' => 'nullable|string|max:15',
             'age' => 'required|integer|min:0',
             'years_months' => 'required_if:age,!=,null|in:Year(s),Month(s),Day(s)',
             'government_non_gov' => 'required',
-            'government_department_id' => 'required_with:government_card_no,designation',
-            'government_card_no' => 'required_with:government_department_id',
-            'designation' => 'required_with:government_department_id',
+            'government_department_id' => 'required_with:government_card_no,designation,sehat_sahulat_visit_no,sehat_sahulat_patient_id',
+            'government_card_no' => [
+                'nullable',
+                function ($attribute, $value, $fail) use ($request) {
+                    if ($request->government_department_id && $request->government_department_id != 95 && empty($value)) {
+                        $fail('The government card no field is required.');
+                    }
+                },
+            ],
+            'designation' => [
+                'nullable',
+                function ($attribute, $value, $fail) use ($request) {
+                    if ($request->government_department_id && $request->government_department_id != 95 && empty($value)) {
+                        $fail('The designation field is required.');
+                    }
+                },
+            ],
+            'sehat_sahulat_visit_no' => [
+                'nullable',
+                'string',
+                'max:255',
+                function ($attribute, $value, $fail) use ($request) {
+                    if ($request->government_department_id == 95 && empty($value)) {
+                        $fail('The Visit ID is required for Sehat Sahulat Program.');
+                    }
+                },
+            ],
+            'sehat_sahulat_patient_id' => [
+                'nullable',
+                'string',
+                'max:255',
+                function ($attribute, $value, $fail) use ($request) {
+                    if ($request->government_department_id == 95 && empty($value)) {
+                        $fail('The Patient ID is required for Sehat Sahulat Program.');
+                    }
+                },
+            ],
+            'cnic' => [
+                'nullable',
+                'string',
+                'max:15',
+                function ($attribute, $value, $fail) use ($request) {
+                    if ($request->government_department_id == 95 && empty($value)) {
+                        $fail('CNIC is required for Sehat Sahulat Program.');
+                    }
+                },
+            ],
         ]);
         // login user id capture
         $request->merge(['user_id' => auth()->user()->id]);
@@ -149,7 +197,7 @@ class PatientController extends Controller
                 if ($yearsMonths === 'Year(s)') {
                     $dateOfBirth = now()->subYears($age)->format('Y-m-d');
                 } elseif ($yearsMonths === 'Day(s)') {
-                    $dateOfBirth = now()->subDay($age)->format('Y-m-d');
+                    $dateOfBirth = now()->subDays($age)->format('Y-m-d');
                 } elseif ($yearsMonths === 'Month(s)') {
                     $dateOfBirth = now()->subMonths($age)->format('Y-m-d');
                 } else {
@@ -166,6 +214,7 @@ class PatientController extends Controller
             $amount_hif = null;
             $govt_amount = null;
             $fee_type_id = null;
+            $actual_amount = 0;
 
             // Get department name for dynamic fee lookup
             $department = Department::find($request->department_id);
@@ -193,19 +242,25 @@ class PatientController extends Controller
                         $fee_type_id = 107;
                     }
                 }
+
+                // For SSP (Sehat Sahulat Program), store the actual fee for insurance claim tracking
+                if ($request->government_department_id == 95) {
+                    $sspFeeType = FeeType::find($fee_type_id);
+                    if ($sspFeeType) {
+                        $actual_amount = $sspFeeType->amount;
+                    }
+                }
             } else {
                 if ($request->department_id == 7) {
                     $amount = FeeType::find(108)->amount;
                     $amount_hif = FeeType::find(108)->hif;
                     $fee_type_id = 108;
-                    // all amount goes to government
-                    $govt_amount = $amount;
+                    $govt_amount = $amount - $amount_hif;
                 } elseif ($request->department_id == 23) {
                     $amount = FeeType::find(270)->amount;
                     $amount_hif = FeeType::find(270)->hif;
                     $fee_type_id = 270;
-                    // all amount goes to government
-                    $govt_amount = $amount;
+                    $govt_amount = $amount - $amount_hif;
                 } elseif ($request->department_id == 1) {
                     // For emergency
                     $amount = FeeType::find(1)->amount;
@@ -258,11 +313,14 @@ class PatientController extends Controller
                 'govt_amount' => $govt_amount,
                 'ipd_opd' => $ipd_opd,
                 'payment_status' => 1,
+                'sehat_sahulat_visit_no' => $request->sehat_sahulat_visit_no,
+                'actual_amount' => $actual_amount,
             ]);
             DB::commit();
         } catch (\Exception $e) {
             DB::rollback();
             // something went wrong
+            Log::error($e->getMessage());
         }
 
         if (! empty($chit) && ! empty($patient)) {
@@ -283,9 +341,53 @@ class PatientController extends Controller
             'years_months' => 'required_if:age,!=,null|in:Year(s),Month(s),Day(s)',
 
             'government_non_gov' => 'required',
-            'government_department_id' => 'required_with:government_card_no,designation',
-            'government_card_no' => 'required_with:government_department_id',
-            'designation' => 'required_with:government_department_id',
+            'government_department_id' => 'required_with:government_card_no,designation,sehat_sahulat_visit_no,sehat_sahulat_patient_id',
+            'government_card_no' => [
+                'nullable',
+                function ($attribute, $value, $fail) use ($request) {
+                    if ($request->government_department_id && $request->government_department_id != 95 && empty($value)) {
+                        $fail('The government card no field is required.');
+                    }
+                },
+            ],
+            'designation' => [
+                'nullable',
+                function ($attribute, $value, $fail) use ($request) {
+                    if ($request->government_department_id && $request->government_department_id != 95 && empty($value)) {
+                        $fail('The designation field is required.');
+                    }
+                },
+            ],
+            'sehat_sahulat_visit_no' => [
+                'nullable',
+                'string',
+                'max:255',
+                function ($attribute, $value, $fail) use ($request) {
+                    if ($request->government_department_id == 95 && empty($value)) {
+                        $fail('The Visit ID is required for Sehat Sahulat Program.');
+                    }
+                },
+            ],
+            'sehat_sahulat_patient_id' => [
+                'nullable',
+                'string',
+                'max:255',
+                function ($attribute, $value, $fail) use ($request) {
+                    if ($request->government_department_id == 95 && empty($value)) {
+                        $fail('The Patient ID is required for Sehat Sahulat Program.');
+                    }
+                },
+            ],
+            'cnic' => [
+                'nullable',
+                'string',
+                'max:15',
+                function ($attribute, $value, $fail) use ($request) {
+                    if ($request->government_department_id == 95 && empty($value)) {
+                        $fail('CNIC is required for Sehat Sahulat Program.');
+                    }
+                },
+            ],
         ]);
         // login user id capture
         $request->merge(['user_id' => auth()->user()->id]);
@@ -319,7 +421,7 @@ class PatientController extends Controller
                 } elseif ($yearsMonths === 'Month(s)') {
                     $dateOfBirth = now()->subMonths($age)->format('Y-m-d');
                 } elseif ($yearsMonths === 'Day(s)') {
-                    $dateOfBirth = now()->subDay($age)->format('Y-m-d');
+                    $dateOfBirth = now()->subDays($age)->format('Y-m-d');
                 } else {
                     // Handle an invalid selection or provide a default value
                     $dateOfBirth = null;
@@ -331,8 +433,28 @@ class PatientController extends Controller
             $patient = Patient::create($request->all());
 
             $amount = null;
+            $actual_amount = 0;
             if ($request->input('government_department_id')) {
                 $amount = 0.00;
+                if ($request->department_id == 7) {
+                    $fee_type_id = 108;
+                } elseif ($request->department_id == 23) {
+                    $fee_type_id = 270;
+                } elseif ($request->department_id == 1) {
+                    $fee_type_id = 1;
+                } elseif ($request->department_id == 16) {
+                    $fee_type_id = 1;
+                } else {
+                    $fee_type_id = 107;
+                }
+
+                // For SSP (Sehat Sahulat Program), store the actual fee for insurance claim tracking
+                if ($request->government_department_id == 95) {
+                    $sspFeeType = FeeType::find($fee_type_id);
+                    if ($sspFeeType) {
+                        $actual_amount = $sspFeeType->amount;
+                    }
+                }
             } else {
                 if ($request->department_id == 7) {
                     $amount = FeeType::find(108)->amount;
@@ -384,6 +506,7 @@ class PatientController extends Controller
                 'amount' => $amount,
                 'ipd_opd' => $ipd_opd,
                 'payment_status' => 1,
+                'actual_amount' => $actual_amount,
             ]);
             DB::commit();
         } catch (\Exception $e) {
@@ -403,7 +526,7 @@ class PatientController extends Controller
         return view('patient.proceed', compact('patient'));
     }
 
-    public function add_to_cart(\Illuminate\Http\Request $request, Patient $patient)
+    public function add_to_cart(Request $request, Patient $patient)
     {
 
         $status = $request->status;
@@ -425,7 +548,7 @@ class PatientController extends Controller
         return to_route('patient.proceed', $patient->id);
     }
 
-    public function proceed_cart_destroy(\Illuminate\Http\Request $request, PatientTestCart $patientTestCart)
+    public function proceed_cart_destroy(Request $request, PatientTestCart $patientTestCart)
     {
         $patient_id = $patientTestCart->patient_id;
         $patientTestCart->delete();
@@ -433,7 +556,7 @@ class PatientController extends Controller
         return to_route('patient.proceed', $patient_id)->with('message', 'Lab test deleted successfully!');
     }
 
-    public function proceed_to_invoice(\Illuminate\Http\Request $request, Patient $patient)
+    public function proceed_to_invoice(Request $request, Patient $patient)
     {
         // Validate that the user has agreed to the terms.
         $request->validate(['terms' => 'required']);
@@ -464,6 +587,7 @@ class PatientController extends Controller
             $totalAllAmount = 0;
             $totalAllAmountHif = 0;
             $totalAllGovernmentAmount = 0;
+            $actualTotalAllAmount = 0;
 
             // Create initial invoice
             $invoice = Invoice::create([
@@ -504,11 +628,21 @@ class PatientController extends Controller
                 $totalAmount = 0;
                 $totalHifAmount = 0;
                 $totalGovtAmount = 0;
+                $actualTotalAmount = 0;
+
                 // Calculate total amount (based on government status)
                 if ($patient->government_non_gov == 1) {
                     $totalAmount = 0;
                     $totalHifAmount = 0;
                     $totalGovtAmount = 0;
+
+                    // For SSP (Sehat Sahulat Program), store the actual fee for insurance claim tracking
+                    if ($patient->government_department_id == 95) {
+                        $sspFeeType = FeeType::find($ptc->fee_type_id);
+                        if ($sspFeeType) {
+                            $actualTotalAmount = ($ptc->status == 'Return') ? $sspFeeType->amount * -1 : $sspFeeType->amount;
+                        }
+                    }
                 } else {
                     $feeType = FeeType::find($ptc->fee_type_id);
                     if ($ptc->status == 'Normal') {
@@ -527,6 +661,7 @@ class PatientController extends Controller
                 $totalAllAmount += $totalAmount;
                 $totalAllAmountHif += $totalHifAmount;
                 $totalAllGovernmentAmount += $totalGovtAmount;
+                $actualTotalAllAmount += $actualTotalAmount;
 
                 // Create PatientTest record
                 PatientTest::create([
@@ -539,6 +674,7 @@ class PatientController extends Controller
                     'total_amount' => $totalAmount,
                     'hif_amount' => $totalHifAmount,
                     'govt_amount' => $totalGovtAmount,
+                    'actual_total_amount' => $actualTotalAmount,
                     'status' => $ptc->status,
                 ]);
             }
@@ -547,6 +683,7 @@ class PatientController extends Controller
             $invoice->total_amount = $totalAllAmount;
             $invoice->hif_amount = $totalAllAmountHif;
             $invoice->govt_amount = $totalAllGovernmentAmount;
+            $invoice->actual_total_amount = $actualTotalAllAmount;
             $invoice->save();
 
             // Clear patient's test cart
@@ -557,6 +694,8 @@ class PatientController extends Controller
                     'user_id' => $userId,
                     'invoice_id' => $invoice->id,
                     'patient_id' => $patientId,
+                    'government_department_id' => $patient->government_department_id,
+                    'actual_total_amount' => $actualTotalAllAmount,
                     'unit_ward' => $request->unit_ward,
                     'disease' => $request->disease,
                     'category' => $request->category,
@@ -683,7 +822,7 @@ class PatientController extends Controller
         return view('patient.history', compact('patient_tests'));
     }
 
-    public function patient_test_invoice_generate(\Illuminate\Http\Request $request)
+    public function patient_test_invoice_generate(Request $request)
     {
         // login user id capture
         $request->merge(['user_id' => auth()->user()->id]);
@@ -782,7 +921,7 @@ class PatientController extends Controller
         try {
             DB::beginTransaction();
 
-            \App\Models\PatientEmergencyTreatment::create([
+            PatientEmergencyTreatment::create([
                 'user_id' => auth()->id(),
                 'patient_id' => $patient->id,
                 'disease_id' => $request->disease_id ?: null,

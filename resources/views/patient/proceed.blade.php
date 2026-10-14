@@ -72,13 +72,13 @@
                             Collect Report At:
                         </td>
                         <td class="">
-                            {{ \Carbon\Carbon::now()->addDay(1)->format('d-M-Y') }}
+                            {{ \Carbon\Carbon::now()->addDay()->format('d-M-Y') }}
                         </td>
                         <td class=" font-extrabold">Mobile:</td>
                         <td class="">{{$patient->mobile}}</td>
                     </tr>
 
-                    <tr>
+                <tr>
                         <td class=" font-extrabold">Registration Date:</td>
                         <td class="">
                             {{ \Carbon\Carbon::parse($patient->registration_date)->format('d-M-Y') }}
@@ -88,6 +88,18 @@
                             {{ Auth::user()->name }}
                         </td>
                     </tr>
+                    @if($patient->government_department_id == 95)
+                    <tr>
+                        <td class="font-extrabold">Visit ID (SS):</td>
+                        <td class="">{{ $patient->sehat_sahulat_visit_no }}</td>
+                        <td class="font-extrabold">Patient ID (SS):</td>
+                        <td class="">{{ $patient->sehat_sahulat_patient_id }}</td>
+                    </tr>
+                    <tr>
+                         <td class="font-extrabold">CNIC:</td>
+                         <td class="">{{ $patient->cnic }}</td>
+                    </tr>
+                    @endif
                 </table>
                 <hr style="border: 0.5px solid black;">
                 <br>

@@ -17,9 +17,9 @@ yarn-error.log
 /.fleet
 /.idea
 /.vscode
-
+/.claude
 .DS_Store
 **/.DS_Store
+*.bak
 __pycache__/
-scripts/__pycache__/
 *.pyc

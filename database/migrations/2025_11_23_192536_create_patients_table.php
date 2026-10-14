@@ -32,6 +32,8 @@ return new class extends Migration
             $table->boolean('email_alert')->default(false);
             $table->boolean('mobile_alert')->default(false);
             $table->string('cnic', 15)->nullable();
+            $table->string('sehat_sahulat_patient_id')->nullable();
+            $table->string('sehat_sahulat_visit_no')->nullable();
             $table->boolean('government_non_gov')->nullable();
             $table->unsignedBigInteger('government_department_id')->nullable()->index('patients_government_department_id_foreign');
             $table->string('designation')->nullable();

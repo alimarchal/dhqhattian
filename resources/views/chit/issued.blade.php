@@ -141,7 +141,7 @@
                         </tr>
                         </thead>
                         <tbody>
-                        @foreach($issued_chits as $chit)
+                        @foreach($issued_chits ?? [] as $chit)
                             <tr class="border-black">
                                 <td class="border-black border px-4 py-2">{{$loop->iteration}}</td>
                                 <td class="border-black border px-4 py-2 text-center">{{date('y')}}-{{ $chit->id .'-' . $chit->patient_id}}</td>

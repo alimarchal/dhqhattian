@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreInvoiceRequest;
 use App\Http\Requests\UpdateInvoiceRequest;
-use App\Models\Chit;
 use App\Models\Invoice;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -27,17 +26,17 @@ class InvoiceController extends Controller
         $issued_invoices = null;
         if ($user->hasRole('Front Desk/Receptionist')) {
             $issued_invoices = QueryBuilder::for(Invoice::class)
-                ->allowedFilters(['patient_id', 'fee_type_id', 'government_department_id', 'issued_date', 'ipd_opd', 'government_card_no', AllowedFilter::exact('government_non_gov'), AllowedFilter::exact('id'), AllowedFilter::exact('department_id')],)
+                ->allowedFilters(['patient_id', 'fee_type_id', 'government_department_id', 'issued_date', 'ipd_opd', 'government_card_no', AllowedFilter::exact('government_non_gov'), AllowedFilter::exact('id'), AllowedFilter::exact('department_id')])
                 ->where('user_id', $user->id)->whereDate('created_at', Carbon::today())
 //                ->where('user_id', $user->id)->where('ipd_opd', 1)->whereDate('issued_date', Carbon::today())
 //                ->orderByDesc('created_at') // Corrected 'DSEC' to 'DESC'
                 ->paginate(1000);
 
-        } elseif ($user->hasRole(['Administrator'])) {
+        } elseif ($user->hasRole(['Super-Admin', 'Administrator'])) {
             $issued_invoices = QueryBuilder::for(Invoice::class)
-                ->allowedFilters(['patient_id', 'fee_type_id', AllowedFilter::exact('department_id')],)
+                ->allowedFilters(['patient_id', 'fee_type_id', AllowedFilter::exact('department_id')])
                 ->whereDate('created_at', Carbon::today())
-                ->orderByDesc('created_at') // Corrected 'DSEC' to 'DESC'
+                ->orderByDesc('created_at')
                 ->paginate(1000);
         }
 
@@ -52,10 +51,10 @@ class InvoiceController extends Controller
         $start_date = Carbon::parse($request->start_date)->format('Y-m-d');
         $end_date = Carbon::parse($request->end_date)->format('Y-m-d');
 
-        $date_start_at = $start_date . ' 00:00:00';
-        $date_end_at = $end_date . ' 23:59:59';
+        $date_start_at = $start_date.' 00:00:00';
+        $date_end_at = $end_date.' 23:59:59';
 
-        if ($user->hasRole(['Administrator'])) {
+        if ($user->hasRole(['Super-Admin', 'Administrator'])) {
             $issued_invoices = QueryBuilder::for(Invoice::class)->with('patient_test', 'admission', 'patient', 'user')
                 ->allowedFilters([
                     AllowedFilter::exact('patient_id'),
@@ -64,7 +63,7 @@ class InvoiceController extends Controller
                     AllowedFilter::exact('government_non_government'),
                     AllowedFilter::exact('patient.government_card_no'),
                     AllowedFilter::exact('patient.sex'),
-                ],)
+                ], )
                 ->whereBetween('created_at', [$date_start_at, $date_end_at])
                 ->orderBy('created_at') // Corrected 'DSEC' to 'DESC'
                 ->paginate(100000)->withQueryString();

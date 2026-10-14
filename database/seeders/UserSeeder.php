@@ -5,45 +5,74 @@ namespace Database\Seeders;
 use App\Models\Team;
 use App\Models\User;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Hash;
 
 class UserSeeder extends Seeder
 {
     public function run(): void
     {
-        $users = json_decode(file_get_contents(database_path('seeders/data/users.json')), true);
-        $userRoles = json_decode(file_get_contents(database_path('seeders/data/user_roles.json')), true);
+        // Create Administrator user
+        $admin = User::updateOrCreate(['id' => 1], [
+            'name' => 'Administrator',
+            'email' => 'admin@dhqhattian.test',
+            'password' => Hash::make('password'),
+            'department_id' => null,
+            'status' => true,
+            'profile_photo_path' => null,
+        ]);
 
-        foreach ($users as $userData) {
-            $user = User::updateOrCreate(['id' => $userData['id']], [
-                'name' => $userData['name'],
-                'email' => $userData['email'],
-                'password' => $userData['password'],
-                'department_id' => $userData['department_id'] === 'NULL' ? null : $userData['department_id'],
-                'status' => $userData['status'],
-                'profile_photo_path' => $userData['profile_photo_path'] === 'NULL' ? null : $userData['profile_photo_path'],
+        $admin->syncRoles(['Super-Admin']);
+
+        // Create personal team for admin
+        if ($admin->ownedTeams->isEmpty()) {
+            Team::forceCreate([
+                'user_id' => $admin->id,
+                'name' => "Administrator's Team",
+                'personal_team' => true,
             ]);
+        }
 
-            // Assign role from mapping or CSV
-            $roleName = $userRoles[$user->id] ?? $userData['role'] ?? null;
+        // Create Administrator user
+        $administrator = User::updateOrCreate(['id' => 3], [
+            'name' => 'Administrator User',
+            'email' => 'administrator@dhqhattian.test',
+            'password' => Hash::make('password'),
+            'department_id' => null,
+            'status' => true,
+            'profile_photo_path' => null,
+        ]);
 
-            if ($roleName && $roleName !== 'NULL') {
-                $user->syncRoles([$roleName]);
-            }
+        $administrator->syncRoles(['Administrator']);
 
-            // Fallback for core users to be Super-Admin/Administrator
-            if (in_array($user->id, [1, 2])) {
-                $user->assignRole('Super-Admin');
-                $user->assignRole('Administrator');
-            }
+        // Create personal team for administrator
+        if ($administrator->ownedTeams->isEmpty()) {
+            Team::forceCreate([
+                'user_id' => $administrator->id,
+                'name' => "Administrator User's Team",
+                'personal_team' => true,
+            ]);
+        }
 
-            // Create personal team if not exists (Jetstream requirement)
-            if ($user->ownedTeams->isEmpty()) {
-                Team::forceCreate([
-                    'user_id' => $user->id,
-                    'name' => explode(' ', $user->name, 2)[0]."'s Team",
-                    'personal_team' => true,
-                ]);
-            }
+        // Create Front Desk user (no permissions by default)
+        $frontDesk = User::updateOrCreate(['id' => 2], [
+            'name' => 'Front Desk User',
+            'email' => 'receptionist@dhqhattian.test',
+            'password' => Hash::make('password'),
+            'department_id' => null,
+            'status' => true,
+            'profile_photo_path' => null,
+        ]);
+
+        $frontDesk->syncRoles(['Front Desk/Receptionist']);
+        // Note: No permissions assigned - admin will assign via UI
+
+        // Create personal team for front desk
+        if ($frontDesk->ownedTeams->isEmpty()) {
+            Team::forceCreate([
+                'user_id' => $frontDesk->id,
+                'name' => "Front Desk's Team",
+                'personal_team' => true,
+            ]);
         }
     }
 }

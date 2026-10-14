@@ -11,6 +11,7 @@ use App\Models\Patient;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Spatie\QueryBuilder\AllowedFilter;
 use Spatie\QueryBuilder\QueryBuilder;
 
@@ -35,13 +36,55 @@ class ChitController extends Controller
     {
         $request->validate([
             'ipd_opd' => 'required',
-            'government_department_id' => 'required_with:government_card_no,designation',
-            'government_card_no' => 'required_with:government_department_id',
-            'designation' => 'required_with:government_department_id',
             'department_id' => 'required',
+            'government_department_id' => 'required_with:government_card_no,designation,sehat_sahulat_visit_no,sehat_sahulat_patient_id',
+            'government_card_no' => [
+                'nullable',
+                function ($attribute, $value, $fail) use ($request) {
+                    if ($request->government_department_id && $request->government_department_id != 95 && empty($value)) {
+                        $fail('The government card no field is required.');
+                    }
+                },
+            ],
+            'designation' => [
+                'nullable',
+                function ($attribute, $value, $fail) use ($request) {
+                    if ($request->government_department_id && $request->government_department_id != 95 && empty($value)) {
+                        $fail('The designation field is required.');
+                    }
+                },
+            ],
+            'sehat_sahulat_visit_no' => [
+                'nullable',
+                'string',
+                'max:255',
+                function ($attribute, $value, $fail) use ($request) {
+                    if ($request->government_department_id == 95 && empty($value)) {
+                        $fail('The Visit ID is required for Sehat Sahulat Program.');
+                    }
+                },
+            ],
+            'sehat_sahulat_patient_id' => [
+                'nullable',
+                'string',
+                'max:255',
+                function ($attribute, $value, $fail) use ($request) {
+                    if ($request->government_department_id == 95 && empty($value)) {
+                        $fail('The Patient ID is required for Sehat Sahulat Program.');
+                    }
+                },
+            ],
+            'cnic' => [
+                'nullable',
+                'string',
+                'max:15',
+                function ($attribute, $value, $fail) use ($request) {
+                    if ($request->government_department_id == 95 && empty($value)) {
+                        $fail('CNIC is required for Sehat Sahulat Program.');
+                    }
+                },
+            ],
         ]);
-
-        //        dd($request->all());
 
         // login user id capture
         $request->merge(['user_id' => auth()->user()->id]);
@@ -62,6 +105,7 @@ class ChitController extends Controller
             $ipd_opd = $request->ipd_opd;
             $amount_hif = 0;
             $govt_amount = 0;
+            $actual_amount = 0;
 
             // Get department name for dynamic fee lookup
             $department = Department::find($request->department_id);
@@ -87,19 +131,25 @@ class ChitController extends Controller
                         $fee_type_id = 107;
                     }
                 }
+
+                // For SSP (Sehat Sahulat Program), store the actual fee for insurance claim tracking
+                if ($request->government_department_id == 95) {
+                    $sspFeeType = FeeType::find($fee_type_id);
+                    if ($sspFeeType) {
+                        $actual_amount = $sspFeeType->amount;
+                    }
+                }
             } else {
                 if ($request->department_id == 7) {
                     $amount = FeeType::find(108)->amount;
                     $amount_hif = FeeType::find(108)->hif;
                     $fee_type_id = 108;
-                    // as all amount goes to government
-                    $govt_amount = $amount;
+                    $govt_amount = $amount - $amount_hif;
                 } elseif ($request->department_id == 23) {
                     $amount = FeeType::find(270)->amount;
                     $amount_hif = FeeType::find(270)->hif;
                     $fee_type_id = 270;
-                    // all amount goes to government
-                    $govt_amount = $amount;
+                    $govt_amount = $amount - $amount_hif;
                 } elseif ($request->department_id == 1) {
                     // For emergency
                     $amount = FeeType::find(1)->amount;
@@ -134,6 +184,17 @@ class ChitController extends Controller
                 $ipd_opd = 1;
             }
 
+            // Update patient details if Sehat Sahulat fields are present
+            if ($request->government_department_id == 95) {
+                $patient->update([
+                    'sehat_sahulat_visit_no' => $request->sehat_sahulat_visit_no,
+                    'sehat_sahulat_patient_id' => $request->sehat_sahulat_patient_id,
+                    'government_department_id' => 95,
+                    'government_non_gov' => 1,
+                    'cnic' => $request->cnic,
+                ]);
+            }
+
             // this is for opd and ipd
             $chit = Chit::create([
                 'user_id' => $request->user_id,
@@ -151,11 +212,13 @@ class ChitController extends Controller
                 'govt_amount' => $govt_amount,
                 'ipd_opd' => $ipd_opd,
                 'payment_status' => 1,
+                'sehat_sahulat_visit_no' => $request->sehat_sahulat_visit_no,
+                'actual_amount' => $actual_amount,
             ]);
             DB::commit();
         } catch (\Exception $e) {
             DB::rollback();
-            // something went wrong
+            Log::error('Issue Chit Error: '.$e->getMessage());
         }
 
         return to_route('chit.print', [$patient->id, $chit->id]);
@@ -172,14 +235,13 @@ class ChitController extends Controller
             $issued_chits = QueryBuilder::for(Chit::class)
                 ->allowedFilters(['patient_id', 'fee_type_id', 'government_department_id', 'issued_date', 'ipd_opd', 'government_card_no', AllowedFilter::exact('government_non_gov'), AllowedFilter::exact('id'), AllowedFilter::exact('department_id')])
                 ->where('user_id', $user->id)->whereDate('issued_date', Carbon::today())
-//                ->where('user_id', $user->id)->where('ipd_opd', 1)->whereDate('issued_date', Carbon::today())
+                //                ->where('user_id', $user->id)->where('ipd_opd', 1)->whereDate('issued_date', Carbon::today())
 //                ->orderByDesc('created_at') // Corrected 'DSEC' to 'DESC'
                 ->paginate(500);
-        } elseif ($user->hasRole(['Administrator'])) {
+        } elseif ($user->hasRole(['Super-Admin', 'Administrator'])) {
             $issued_chits = QueryBuilder::for(Chit::class)
                 ->allowedFilters(['patient_id', 'fee_type_id', 'government_department_id', 'issued_date', 'ipd_opd', 'government_card_no', AllowedFilter::exact('government_non_gov'), AllowedFilter::exact('id'), AllowedFilter::exact('department_id')])
                 ->whereDate('issued_date', Carbon::today())
-//                ->orderByDesc('created_at') // Corrected 'DSEC' to 'DESC'
                 ->paginate(1000);
         }
 
@@ -196,7 +258,7 @@ class ChitController extends Controller
 
         $user = \Auth::user();
         $issued_chits = null;
-        if ($user->hasRole(['Administrator'])) {
+        if ($user->hasRole(['Super-Admin', 'Administrator'])) {
             $issued_chits = QueryBuilder::for(Chit::class)->with('user', 'patient', 'department')
                 ->allowedFilters([
                     AllowedFilter::exact('department_id'),
