@@ -2,100 +2,163 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\PermissionCatalog;
+use App\Support\RoleStatus;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 
-
-class RoleController extends Controller
+class RoleController extends MasterCrudController
 {
-    /**
-     * Display a listing of the resource.
-     */
-    public function index()
-    {
-        $roles = Role::all();
+    /** Users sign in through the sanctum guard, so roles and permissions are managed for that guard. */
+    private const GUARD = 'sanctum';
 
-        return view('roles.index', compact('roles'));
+    private const SUPER_ADMIN = 'Super-Admin';
+
+    protected function model(): string
+    {
+        return Role::class;
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
+    protected function config(): array
     {
-        $permissions = Permission::all();
-        return view('roles.create', compact('permissions'));
+        return [
+            'title' => 'Roles',
+            'singular' => 'Role',
+            'route' => 'roles',
+            'permission' => 'roles',
+            'searchPlaceholder' => 'Search role name',
+            'search' => ['name'],
+            'defaultSort' => ['name', 'asc'],
+            'withCount' => ['permissions'],
+            'formView' => 'roles.form',
+            'lede' => 'A role is a ready set of permissions. Inactive roles are hidden from the user form; nothing is deleted.',
+            'protected' => fn ($role) => $role->name === self::SUPER_ADMIN,
+            'columns' => [
+                ['key' => 'name', 'label' => 'Role', 'sortable' => true],
+                ['key' => 'permissions_count', 'label' => 'Permissions', 'align' => 'center', 'value' => fn ($r) => $r->permissions_count],
+                ['key' => 'users', 'label' => 'Users', 'align' => 'center', 'value' => fn ($r) => DB::table(config('permission.table_names.model_has_roles'))->where('role_id', $r->id)->count()],
+                ['key' => 'is_active', 'label' => 'Status', 'align' => 'center', 'badge' => true, 'value' => fn ($r) => RoleStatus::supported() ? ($r->is_active ? 'Active' : 'Inactive') : 'Active'],
+                ['key' => 'created_at', 'label' => 'Created', 'sortable' => true, 'value' => fn ($r) => $r->created_at?->format('d M Y')],
+            ],
+            'fields' => [
+                ['name' => 'name', 'label' => 'Role name', 'type' => 'text', 'rules' => 'required|string|max:255'],
+            ],
+        ];
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
+    protected function query(Request $request): Builder
+    {
+        return parent::query($request)->where('guard_name', self::GUARD);
+    }
+
+    protected function findRecord($id): Model
+    {
+        return Role::where('guard_name', self::GUARD)->with('permissions:id')->findOrFail($id);
+    }
+
+    protected function formData(array $config, Model $record): array
+    {
+        $permissions = Permission::where('guard_name', self::GUARD)->orderBy('name')->get();
+
+        return parent::formData($config, $record) + [
+            'catalog' => PermissionCatalog::build($permissions),
+            'selected' => $record->exists ? $record->permissions->pluck('id')->map(fn ($id) => (string) $id)->all() : [],
+            'locked' => $record->exists && $record->name === self::SUPER_ADMIN,
+            'statusSupported' => RoleStatus::supported(),
+            'roleStatus' => $record->exists && RoleStatus::supported() && ! $record->is_active ? 'Inactive' : 'Active',
+        ];
+    }
+
+    protected function rules(Request $request, ?Model $record): array
+    {
+        return [
+            'name' => ['required', 'string', 'max:255', Rule::unique('roles', 'name')->where('guard_name', self::GUARD)->ignore($record?->id)],
+            'status' => 'nullable|in:Active,Inactive',
+            'permissions' => 'nullable|array',
+            'permissions.*' => 'exists:permissions,id,guard_name,'.self::GUARD,
+        ];
+    }
+
     public function store(Request $request)
     {
-        $request->validate([
-            'name' => 'required|unique:roles,name',
-        ]);
-
-        $request->validate([
-            'name' => 'required|unique:roles,name',
-            'permissions' => 'required|array',
-            'permissions.*' => 'exists:permissions,id',
-        ]);
-
-        $role = Role::create(['name' => $request->input('name')]);
-        $role->syncPermissions($request->input('permissions'));
+        $data = $request->validate($this->rules($request, null));
+        DB::transaction(function () use ($data) {
+            $role = Role::create(['name' => $data['name'], 'guard_name' => self::GUARD]);
+            $this->applyStatus($role, $data['status'] ?? 'Active');
+            $role->syncPermissions($this->permissionModels($data['permissions'] ?? []));
+        });
 
         return redirect()->route('roles.index')->with('success', 'Role created successfully.');
-
-    }
-    public function edit(Role $role)
-    {
-        $permissions = Permission::all();
-
-        return view('roles.edit', compact('role', 'permissions'));
     }
 
-    public function update(Request $request, Role $role)
+    public function update(Request $request, $id)
     {
-        $request->validate([
-            'name' => 'required|unique:roles,name,' . $role->id,
-            'permissions' => 'nullable|array',
-            'permissions.*' => 'exists:permissions,id',
-        ]);
+        $role = $this->findRecord($id);
+        $data = $request->validate($this->rules($request, $role));
 
-        $role->name = $request->input('name');
-        $role->save();
+        if ($role->name === self::SUPER_ADMIN && $data['name'] !== self::SUPER_ADMIN) {
+            return back()->withErrors(['name' => 'The Super-Admin role cannot be renamed.'])->withInput();
+        }
 
-        $permissions = $request->input('permissions', []);
+        if (($data['status'] ?? 'Active') === 'Inactive' && $this->hasUsers($role)) {
+            return back()->withErrors(['status' => 'This role is assigned to users, so it cannot be made inactive.'])->withInput();
+        }
 
-        // Get the current permissions directly assigned to the role
-        $currentPermissions = $role->permissions()->pluck('id')->toArray();
-
-        // Detach permissions that are no longer selected
-        $permissionsToDetach = array_diff($currentPermissions, $permissions);
-        $role->permissions()->detach($permissionsToDetach);
-
-        // Attach new permissions
-        $permissionsToAttach = array_diff($permissions, $currentPermissions);
-        $role->permissions()->attach($permissionsToAttach);
+        DB::transaction(function () use ($role, $data) {
+            $role->update(['name' => $data['name']]);
+            if ($role->name !== self::SUPER_ADMIN) {
+                $this->applyStatus($role, $data['status'] ?? 'Active');
+            }
+            if ($role->name !== self::SUPER_ADMIN) {
+                $role->syncPermissions($this->permissionModels($data['permissions'] ?? []));
+            }
+        });
 
         return redirect()->route('roles.index')->with('success', 'Role updated successfully.');
     }
 
-    public function destroy(Role $role)
+    protected function cannotDelete(Model $record): ?string
     {
-        // Retrieve the related permissions
-        $permissions = $role->permissions;
-
-        // Delete the role
-        $role->delete();
-
-        // Delete the related permissions
-        foreach ($permissions as $permission) {
-            $permission->delete();
+        if ($record->name === self::SUPER_ADMIN) {
+            return 'The Super-Admin role cannot be deleted.';
+        }
+        if ($this->hasUsers($record)) {
+            return 'This role is assigned to users and cannot be deleted.';
         }
 
-        return redirect()->route('roles.index')->with('success', 'Role and related permissions deleted successfully.');
+        return null;
+    }
+
+    protected function deleteRecord(Model $record): void
+    {
+        // Permissions are shared between roles, so only the role and its pivot rows are removed.
+        // (Deleting through the model fails for the "sanctum" guard: it has no provider in config/auth.php.)
+        DB::transaction(function () use ($record) {
+            DB::table(config('permission.table_names.role_has_permissions'))->where('role_id', $record->id)->delete();
+            Role::whereKey($record->id)->toBase()->delete();
+        });
+        app(\Spatie\Permission\PermissionRegistrar::class)->forgetCachedPermissions();
+    }
+
+    private function hasUsers(Model $role): bool
+    {
+        return DB::table(config('permission.table_names.model_has_roles'))->where('role_id', $role->id)->exists();
+    }
+
+    private function applyStatus(Model $role, string $status): void
+    {
+        if (RoleStatus::supported()) {
+            Role::whereKey($role->id)->toBase()->update(['is_active' => $status === 'Active']);
+        }
+    }
+
+    private function permissionModels(array $ids)
+    {
+        return Permission::whereIn('id', $ids)->where('guard_name', self::GUARD)->get();
     }
 }

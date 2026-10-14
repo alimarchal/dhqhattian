@@ -24,16 +24,21 @@ Route::middleware(['auth:sanctum', config('jetstream.auth_session'), 'verified']
     // Dashboard
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard')->middleware('permission:view dashboard');
 
+    // Settings hub: shows only the cards the user has a permission for
+    Route::get('settings', \App\Http\Controllers\SettingsController::class)->name('settings.index')
+        ->middleware('permission:'.implode('|', \App\Http\Controllers\SettingsController::PERMISSIONS));
+
     // Roles & Permissions Management
-    Route::resource('roles', \App\Http\Controllers\RoleController::class)->middleware('permission:view roles');
-    Route::resource('permissions', \App\Http\Controllers\PermissionController::class)->middleware('permission:manage permissions');
+    Route::resource('roles', \App\Http\Controllers\RoleController::class)->except('show');
+    Route::resource('permissions', \App\Http\Controllers\PermissionController::class)->except('show');
 
     // Users Management
-    Route::resource('users', UserController::class)->middleware('permission:view users');
+    Route::post('users/bulk-update', [UserController::class, 'bulkUpdate'])->name('users.bulk-update');
+    Route::resource('users', UserController::class);
 
     // Departments
-    Route::resource('department', \App\Http\Controllers\DepartmentController::class)->middleware('permission:view departments');
-    Route::resource('governmentDepartment', \App\Http\Controllers\GovernmentDepartmentController::class)->middleware('permission:view government departments');
+    Route::resource('department', \App\Http\Controllers\DepartmentController::class)->except('show');
+    Route::resource('governmentDepartment', \App\Http\Controllers\GovernmentDepartmentController::class)->except('show');
 
     // Lab Tests
     Route::resource('labTest', \App\Http\Controllers\LabTestController::class);
@@ -68,7 +73,7 @@ Route::middleware(['auth:sanctum', config('jetstream.auth_session'), 'verified']
     });
 
     // Fee Types
-    Route::resource('feeType', \App\Http\Controllers\FeeTypeController::class)->middleware('permission:view fee types');
+    Route::resource('feeType', \App\Http\Controllers\FeeTypeController::class)->except('show');
     Route::get('patient/{patient}/chit/{chit}', [\App\Http\Controllers\ChitController::class, 'print'])->name('chit.print');
 
     // Chits & Invoices
@@ -99,7 +104,9 @@ Route::middleware(['auth:sanctum', config('jetstream.auth_session'), 'verified']
     Route::get('reports/misc/department-wise', [\App\Http\Controllers\ReportsController::class, 'department_wise'])->name('reports.misc.category-wise')->middleware('permission:view department reports');
     Route::get('reports/misc/department-wise-two', [\App\Http\Controllers\ReportsController::class, 'department_wise_two'])->name('reports.misc.category-wise-two')->middleware('permission:view department reports');
 
-    Route::get('reports/ssp/claims', [\App\Http\Controllers\ReportsController::class, 'sspClaims'])->name('reports.ssp.claims')->middleware('permission:view ssp reports');
+    if (config('modules.ssp')) {
+        Route::get('reports/ssp/claims', [\App\Http\Controllers\ReportsController::class, 'sspClaims'])->name('reports.ssp.claims')->middleware('permission:view ssp reports');
+    }
 
     // Process and Restore Invoice Routes
     Route::get('/process', [\App\Http\Controllers\ProcessInvoicesController::class, 'process'])->name('invoices.process');

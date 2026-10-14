@@ -39,11 +39,11 @@
                         @foreach($patient_tests as $patient_test)
                             <tr class="border-black">
                                 <td class="border-black border px-4 py-2">{{$loop->iteration}}</td>
-                                <td class="border-black border px-4 py-2">{{$patient_test->patient->name}}</td>
+                                <td class="border-black border px-4 py-2">{{ $patient_test->patient->first_name }} {{ $patient_test->patient->last_name }}</td>
                                 <td class="border-black border px-4 py-2">{{\Carbon\Carbon::parse($patient_test->created_at)->format('d-M-Y')}}</td>
                                 <td class="border-black border px-4 py-2">
-                                    <a href="{{ route('patient.patient_invoice', [$patient_test->patient_id,$patient_test->patient_test_id]) }}" class="text-indigo-600 hover:text-indigo-900">
-                                    {{$patient_test->patient_test_id}}
+                                    <a href="{{ route('patient.patient_invoice', [$patient_test->patient_id,$patient_test->invoice_id]) }}" class="text-indigo-600 hover:text-indigo-900">
+                                    {{ $patient_test->invoice_id }}
                                     </a>
                                 </td>
                             </tr>

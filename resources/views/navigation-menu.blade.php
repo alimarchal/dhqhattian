@@ -30,42 +30,11 @@
                         </x-nav-link>
                     @endcan
 
-                    @can('view departments')
-                        <x-nav-link href="{{ route('department.index') }}" :active="request()->routeIs('department.*')">
-                            {{ __('OPDs') }}
+                    @canany(\App\Http\Controllers\SettingsController::PERMISSIONS)
+                        <x-nav-link href="{{ route('settings.index') }}" :active="request()->routeIs('settings.*', 'department.*', 'governmentDepartment.*', 'feeType.*', 'users.*', 'roles.*', 'permissions.*')">
+                            {{ __('Settings') }}
                         </x-nav-link>
-                    @endcan
-
-                    @can('view government departments')
-                        <x-nav-link href="{{ route('governmentDepartment.index') }}"
-                            :active="request()->routeIs('governmentDepartment.*')">
-                            {{ __('Govt Dept') }}
-                        </x-nav-link>
-                    @endcan
-
-                    @can('view fee types')
-                        <x-nav-link href="{{ route('feeType.index') }}" :active="request()->routeIs('feeType.*')">
-                            {{ __('Hosp Fees') }}
-                        </x-nav-link>
-                    @endcan
-
-                    @can('view users')
-                        <x-nav-link href="{{ route('users.index') }}" :active="request()->routeIs('users.*')">
-                            {{ __('Users') }}
-                        </x-nav-link>
-                    @endcan
-
-                    @can('view roles')
-                        <x-nav-link href="{{ route('roles.index') }}" :active="request()->routeIs('roles.*')">
-                            {{ __('Roles') }}
-                        </x-nav-link>
-                    @endcan
-
-                    @can('manage permissions')
-                        <x-nav-link href="{{ route('permissions.index') }}" :active="request()->routeIs('permissions.*')">
-                            {{ __('Permissions') }}
-                        </x-nav-link>
-                    @endcan
+                    @endcanany
 
                 </div>
             </div>

@@ -116,6 +116,7 @@
                     </a>
                 @endcan
 
+                @if (config('modules.ssp'))
                 @can('view ssp reports')
                     <a href="{{ route('reports.ssp.claims') }}"
                         class="transform hover:scale-105 transition duration-300 shadow-xl rounded-lg col-span-12 sm:col-span-6 xl:col-span-3 intro-y bg-emerald-700">
@@ -140,6 +141,7 @@
                         </div>
                     </a>
                 @endcan
+                @endif
 
 
 

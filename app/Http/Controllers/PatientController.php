@@ -814,8 +814,8 @@ class PatientController extends Controller
 
     public function patient_history(Patient $patient)
     {
-        $patient_tests = PatientTest::where('patient_id', $patient->id)
-            ->groupBy('patient_test_id')
+        $patient_tests = PatientTest::with('patient')
+            ->where('patient_id', $patient->id)
             ->orderBy('created_at', 'desc')
             ->get();
 

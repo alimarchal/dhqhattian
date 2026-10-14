@@ -2,74 +2,33 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Requests\StoreGovernmentDepartmentRequest;
-use App\Http\Requests\UpdateGovernmentDepartmentRequest;
-use App\Models\Department;
 use App\Models\GovernmentDepartment;
 
-class GovernmentDepartmentController extends Controller
+class GovernmentDepartmentController extends MasterCrudController
 {
-    /**
-     * Display a listing of the resource.
-     */
-    public function index()
+    protected function model(): string
     {
-        $departments = GovernmentDepartment::all();
-        return view('government-departments.index', compact('departments'));
+        return GovernmentDepartment::class;
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
+    protected function config(): array
     {
-        return view('government-departments.create');
-    }
-
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function store(StoreGovernmentDepartmentRequest $request)
-    {
-        $department = GovernmentDepartment::create($request->all());
-        return to_route('governmentDepartment.index')->with('message', 'Government department created successfully!');
-    }
-
-    /**
-     * Display the specified resource.
-     */
-    public function show(GovernmentDepartment $governmentDepartment)
-    {
-        //
-    }
-
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(GovernmentDepartment $governmentDepartment)
-    {
-        $department = $governmentDepartment;
-        return view('government-departments.edit', compact('department'));
-    }
-
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(UpdateGovernmentDepartmentRequest $request, GovernmentDepartment $governmentDepartment)
-    {
-        $governmentDepartment->update($request->all());
-        return redirect()->route('governmentDepartment.index')
-            ->with('message', 'Government department updated successfully!');
-    }
-
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(GovernmentDepartment $governmentDepartment)
-    {
-        $governmentDepartment->delete();
-
-        return redirect()->route('governmentDepartment.index')
-            ->with('message', 'Government department deleted successfully!');
+        return [
+            'title' => 'Government Departments',
+            'singular' => 'Government department',
+            'route' => 'governmentDepartment',
+            'permission' => 'government departments',
+            'usedBy' => [['chits', 'government_department_id', 'chits'], ['patients', 'government_department_id', 'patients']],
+            'lede' => 'Departments whose employees are entitled (government) patients.',
+            'searchPlaceholder' => 'Search by department name',
+            'search' => ['name'],
+            'defaultSort' => ['name', 'asc'],
+            'columns' => [
+                ['key' => 'name', 'label' => 'Government department', 'sortable' => true],
+            ],
+            'fields' => [
+                ['name' => 'name', 'label' => 'Department name', 'type' => 'text', 'rules' => 'required|string|max:255'],
+            ],
+        ];
     }
 }
