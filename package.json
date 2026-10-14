@@ -17,6 +17,8 @@
         "vite": "^4.5.14"
     },
     "dependencies": {
+        "html2canvas": "^1.4.1",
+        "jspdf": "^4.2.1",
         "watch": "^0.13.0"
     }
 }

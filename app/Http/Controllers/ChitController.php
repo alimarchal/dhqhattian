@@ -230,8 +230,6 @@ class ChitController extends Controller
     public function today()
     {
         $user = \Auth::user();
-        // This screen lists every user's records: management only (it used to fail with a 500 for everybody else).
-        abort_unless($user->hasRole(['Super-Admin', 'Administrator']), 403, 'User does not have the right permissions.');
         $issued_chits = null;
         if ($user->hasRole('Front Desk/Receptionist')) {
             $issued_chits = QueryBuilder::for(Chit::class)
@@ -252,6 +250,9 @@ class ChitController extends Controller
 
     public function issued(Request $request)
     {
+        // Lists every user's records, so management only (this used to end in a 500 for everybody else).
+        abort_unless(\Auth::user()->hasRole(['Super-Admin', 'Administrator']), 403, 'User does not have the right permissions.');
+
         $start_date = Carbon::parse($request->start_date)->format('Y-m-d');
         $end_date = Carbon::parse($request->end_date)->format('Y-m-d');
 

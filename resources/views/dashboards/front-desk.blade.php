@@ -21,7 +21,7 @@
     <div class="ak-page" style="padding-top: 24px">
         <x-status-message />
 
-        <section class="db-hero" aria-label="Welcome">
+        <section data-pdf-block class="db-hero" aria-label="Welcome">
             <div class="db-hero-row">
                 <div>
                     <h1>{{ $greeting }}, {{ \Illuminate\Support\Str::of($user->name)->replaceMatches('/^(mr|mrs|ms|miss|dr)\.?\s+/i', '')->trim()->before(' ') }}</h1>
@@ -33,6 +33,7 @@
                 <div class="db-date">{{ now()->format('l') }}<b>{{ now()->format('d M Y') }}</b></div>
             </div>
             <div class="db-actions">
+                <button type="button" class="db-action" onclick="downloadDashboardPdf(this)" data-title="My work" data-subtitle="{{ $user->name }} · {{ now()->format('d M Y') }}" title="Save this page as a PDF"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>Download PDF</button>
                 @can('create patients')
                     <a href="{{ route('patient.create-opd') }}" class="db-action is-primary"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>New OPD patient</a>
                     <a href="{{ route('patient.create-ipd') }}" class="db-action"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>New IPD patient</a>
@@ -49,21 +50,25 @@
             </div>
         </section>
 
-        <section class="db-grid db-kpis" aria-label="Today">
-            @include('dashboards.kpi', ['label' => 'Chits today', 'value' => $rs($n['chits']), 'tone' => '#1e40af', 'icon' => 'chit', 'badge' => $chitText, 'badgeTone' => $chitTone, 'hint' => ''])
-            @include('dashboards.kpi', ['label' => 'Invoices today', 'value' => $rs($n['invoices']), 'tone' => '#0e7490', 'icon' => 'invoice', 'badge' => $invText, 'badgeTone' => $invTone, 'hint' => ''])
+        <section data-pdf-block class="db-grid db-kpis" aria-label="Today">
+            <a href="{{ route('chits.issued-today') }}" style="text-decoration:none">@include('dashboards.kpi', ['label' => 'Issued chits today', 'value' => $rs($n['chits']), 'tone' => '#4f46e5', 'icon' => 'chit', 'badge' => $chitText, 'badgeTone' => $chitTone, 'hint' => ''])</a>
+            <a href="{{ route('chits.issued-today', ['filter' => ['government_non_gov' => 1]]) }}" style="text-decoration:none">@include('dashboards.kpi', ['label' => 'Entitled (free)', 'value' => $rs($n['entitled']), 'tone' => '#0d9488', 'icon' => 'shield', 'hint' => round($n['entitled'] / $entTotal * 100).'% of today\'s chits'])</a>
+            <a href="{{ route('chits.issued-today', ['filter' => ['government_non_gov' => 0]]) }}" style="text-decoration:none">@include('dashboards.kpi', ['label' => 'Non-entitled (paid)', 'value' => $rs($n['non_entitled']), 'tone' => '#2563eb', 'icon' => 'users', 'hint' => round($n['non_entitled'] / $entTotal * 100).'% of today\'s chits'])</a>
+            <a href="{{ route('invoice.issued-today') }}" style="text-decoration:none">@include('dashboards.kpi', ['label' => 'Invoices today', 'value' => $rs($n['invoices']), 'tone' => '#0891b2', 'icon' => 'invoice', 'badge' => $invText, 'badgeTone' => $invTone, 'hint' => ''])</a>
+            @include('dashboards.kpi', ['label' => 'Today revenue', 'prefix' => 'Rs ', 'value' => $rs($n['chit_gross']), 'tone' => '#4f46e5', 'icon' => 'money', 'hint' => 'from chits (with HIF)'])
+            @include('dashboards.kpi', ['label' => 'Invoices revenue', 'prefix' => 'Rs ', 'value' => $rs($n['invoice_gross']), 'tone' => '#0891b2', 'icon' => 'money', 'hint' => 'from invoices (with HIF)'])
             @include('dashboards.kpi', ['label' => 'Government share', 'prefix' => 'Rs ', 'value' => $rs($n['govt']), 'tone' => '#16a34a', 'icon' => 'money', 'hint' => 'what the hospital keeps, after HIF'])
-            @include('dashboards.kpi', ['label' => 'HIF share', 'prefix' => 'Rs ', 'value' => $rs($n['hif']), 'tone' => '#d97706', 'icon' => 'gift', 'hint' => 'of Rs '.$rs($n['collected']).' collected'])
+            @include('dashboards.kpi', ['label' => 'HIF share', 'prefix' => 'Rs ', 'value' => $rs($n['hif']), 'tone' => '#f59e0b', 'icon' => 'gift', 'hint' => 'total revenue Rs '.$rs($n['collected'])])
         </section>
 
-        <section class="db-grid db-kpis" aria-label="This month">
+        <section data-pdf-block class="db-grid db-kpis" aria-label="This month">
             @include('dashboards.kpi', ['label' => 'Chits this month', 'value' => $rs($data['month']['chits']), 'tone' => '#4f46e5', 'icon' => 'chit', 'hint' => $data['worked_days'].' working days'])
             @include('dashboards.kpi', ['label' => 'Daily average', 'value' => $rs($data['month_daily_avg']), 'tone' => '#4f46e5', 'icon' => 'users', 'hint' => 'chits per working day'])
             @include('dashboards.kpi', ['label' => 'Government share (month)', 'prefix' => 'Rs ', 'value' => $rs($data['month']['govt']), 'tone' => '#16a34a', 'icon' => 'money', 'hint' => $rs($data['month']['invoices']).' invoices this month'])
             @include('dashboards.kpi', ['label' => 'Patients registered today', 'value' => $rs($data['registered']), 'tone' => '#0e7490', 'icon' => 'users', 'hint' => 'new patient files by you'])
         </section>
 
-        <section class="db-grid db-two">
+        <section data-pdf-block class="db-grid db-two">
             <div class="db-card">
                 <div class="db-card-head"><h2>My last 7 days</h2><span>chits and invoices issued</span></div>
                 <div class="db-card-body"><div id="week-chart" class="db-chart"></div></div>
@@ -88,7 +93,7 @@
             </div>
         </section>
 
-        <section class="db-grid db-two">
+        <section data-pdf-block class="db-grid db-two">
             <div class="db-card">
                 <div class="db-card-head"><h2>My day by hour</h2><span>@if ($peak) busiest around {{ $peak }} @else chits issued per hour @endif</span></div>
                 <div class="db-card-body"><div id="hour-chart" style="min-height: 220px"></div></div>
