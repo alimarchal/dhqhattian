@@ -9,16 +9,22 @@ use Spatie\Permission\Models\Role;
 
 class UserController extends Controller
 {
+    private const ROLE_GUARD = 'sanctum';
+
     public function index()
     {
         $users = User::with('roles')->get();
+
         return view('users.index', compact('users'));
     }
 
     //
     public function create()
     {
-        $roles = Role::pluck('name', 'id');
+        $roles = Role::query()
+            ->where('guard_name', self::ROLE_GUARD)
+            ->orderBy('name')
+            ->pluck('name', 'id');
 
         return view('users.create', compact('roles'));
     }
@@ -29,7 +35,7 @@ class UserController extends Controller
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users',
             'password' => 'required|string|min:8|confirmed',
-            'role' => 'required|exists:roles,id',
+            'role' => 'required|exists:roles,id,guard_name,'.self::ROLE_GUARD,
         ]);
 
         $user = User::create([
@@ -38,7 +44,7 @@ class UserController extends Controller
             'password' => Hash::make($request->password),
         ]);
 
-        $role = Role::findById($request->role);
+        $role = Role::findById($request->integer('role'), self::ROLE_GUARD);
         $user->assignRole($role);
 
         session()->flash('status', 'User has been successfully added into database.');

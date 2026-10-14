@@ -2,15 +2,14 @@
 
 namespace App\Models;
 
-use App\Http\Controllers\PatientController;
-use App\Http\Controllers\PatientTestController;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class PatientTest extends Model
 {
-    use HasFactory;
+    use HasFactory, SoftDeletes;
 
     protected $fillable = [
         'patient_id',
@@ -35,10 +34,8 @@ class PatientTest extends Model
         return $this->belongsTo(Patient::class, 'patient_id');
     }
 
-
     public function fee_type(): BelongsTo
     {
-        return $this->belongsTo(FeeType::class,'fee_type_id');
+        return $this->belongsTo(FeeType::class, 'fee_type_id');
     }
-
 }

@@ -8,15 +8,14 @@ use App\Models\Department;
 use App\Models\FeeCategory;
 use App\Models\FeeType;
 use App\Models\Invoice;
-use App\Models\Patient;
 use App\Models\PatientTest;
+use App\Models\User;
 use Carbon\Carbon;
 use DB;
 use Illuminate\Http\Request;
 use Spatie\QueryBuilder\AllowedFilter;
-use Spatie\QueryBuilder\QueryBuilder;
 use Spatie\QueryBuilder\Filters\Filter;
-use Illuminate\Database\Eloquent\Builder;
+use Spatie\QueryBuilder\QueryBuilder;
 
 class ReportsController extends Controller
 {
@@ -28,33 +27,31 @@ class ReportsController extends Controller
         $start_date = Carbon::parse($request->start_date)->format('Y-m-d');
         $end_date = Carbon::parse($request->end_date)->format('Y-m-d');
 
-        $date_start_at = $start_date . ' 00:00:00';
-        $date_end_at = $end_date . ' 23:59:59';
+        $date_start_at = $start_date.' 00:00:00';
+        $date_end_at = $end_date.' 23:59:59';
 
         $data = null;
         foreach (Department::where('name', '!=', 'Emergency')->get() as $dpt) {
             $data[$dpt->name] = ['Non_Entitiled' => 0, 'Entitiled' => 0, 'Revenue' => 0, 'Revenue_HIF' => 0, 'department_id' => $dpt->id];
         }
 
-
         $non_entitled = DB::table('chits')
             ->join('departments', 'chits.department_id', '=', 'departments.id')
-            ->select('departments.name', DB::raw('COUNT(chits.government_non_gov) AS Non_Entitiled'), DB::raw('SUM(chits.amount) as Revenue, SUM(chits.amount_hif) as Revenue_HIF'))
+            ->select('departments.name', DB::raw('COUNT(chits.government_non_gov) AS "Non_Entitiled"'), DB::raw('SUM(chits.amount) as "Revenue", SUM(chits.amount_hif) as "Revenue_HIF"'))
             ->whereBetween('chits.issued_date', [$date_start_at, $date_end_at])
             ->where('chits.government_non_gov', 0)
             ->whereIn('ipd_opd', [1, 0])
-            ->groupBy('chits.department_id')
+            ->groupBy('chits.department_id', 'departments.name')
             ->get();
 
         $entitled = DB::table('chits')
             ->join('departments', 'chits.department_id', '=', 'departments.id')
-            ->select('departments.name', DB::raw('COUNT(chits.government_non_gov) AS Entitiled'), DB::raw('SUM(chits.amount) as Revenue, SUM(chits.amount_hif) as Revenue_HIF'))
+            ->select('departments.name', DB::raw('COUNT(chits.government_non_gov) AS "Entitiled"'), DB::raw('SUM(chits.amount) as "Revenue", SUM(chits.amount_hif) as "Revenue_HIF"'))
             ->whereBetween('chits.issued_date', [$date_start_at, $date_end_at])
             ->where('chits.government_non_gov', 1)
             ->whereIn('ipd_opd', [1, 0])
-            ->groupBy('chits.department_id')
+            ->groupBy('chits.department_id', 'departments.name')
             ->get();
-
 
         // Update the $data array with figures from $non_entitled and $entitled queries
         foreach ($non_entitled as $row) {
@@ -63,18 +60,15 @@ class ReportsController extends Controller
             $data[$row->name]['Revenue_HIF'] = $row->Revenue_HIF;
         }
 
-
         foreach ($entitled as $row) {
             $data[$row->name]['Entitiled'] = $row->Entitiled;
         }
-
 
         if ($user->hasRole('Auditor')) {
             return view('reports.auditor.reports-daily', compact('data'));
         } else {
             return view('reports.reports-daily', compact('data'));
         }
-
 
     }
 
@@ -87,15 +81,13 @@ class ReportsController extends Controller
         $start_date = Carbon::parse($request->start_date)->format('Y-m-d');
         $end_date = Carbon::parse($request->end_date)->format('Y-m-d');
 
-        $date_start_at = $start_date . ' 00:00:00';
-        $date_end_at = $end_date . ' 23:59:59';
-
+        $date_start_at = $start_date.' 00:00:00';
+        $date_end_at = $end_date.' 23:59:59';
 
         $data = null;
         $user_id = null;
         $users = null;
         $roleName = 'Front Desk/Receptionist';
-
 
         if ($request->input('user_id')) {
             $user_id = $request->user_id;
@@ -105,11 +97,9 @@ class ReportsController extends Controller
             $users = \App\Models\User::where('id', '!=', 2)->get();
         }
 
-
         foreach ($users as $user) {
             $data[$user->id] = ['Name' => $user->name, 'Invoices' => 0, 'Invoices HIF' => 0, 'Chits' => 0, 'Chits HIF' => 0, 'Invoices Entitled' => 0, 'Invoices Non Entitled' => 0, 'Chit Entitled' => 0, 'Chit Non Entitled' => 0];
         }
-
 
         foreach ($users as $user) {
             $data[$user->id] = [
@@ -125,14 +115,12 @@ class ReportsController extends Controller
             ];
         }
 
-
         if (\Auth::user()->hasRole('Auditor')) {
             return view('reports.auditor.reports-daily-ipd', compact('data'));
         } elseif (\Auth::user()->hasRole(['Administrator', 'Front Desk/Receptionist'])) {
 
             return view('reports.reports-daily-ipd', compact('data'));
         }
-
 
     }
 
@@ -146,6 +134,102 @@ class ReportsController extends Controller
         return view('reports.opd.index');
     }
 
+    public function reportOpdUserWise(Request $request)
+    {
+        $start_date = $request->start_date ? Carbon::parse($request->start_date)->format('Y-m-d') : now()->format('Y-m-d');
+        $end_date = $request->end_date ? Carbon::parse($request->end_date)->format('Y-m-d') : now()->format('Y-m-d');
+
+        $date_start_at = $start_date.' 00:00:00';
+        $date_end_at = $end_date.' 23:59:59';
+
+        $query = Chit::with(['user', 'patient', 'department'])
+            ->whereBetween('issued_date', [$date_start_at, $date_end_at]);
+
+        if ($request->department_id) {
+            $query->where('department_id', $request->department_id);
+        }
+
+        if ($request->user_id) {
+            $query->where('user_id', $request->user_id);
+        }
+
+        $chits = $query->get()->filter(function ($chit) use ($request) {
+            if ($request->specialists_only == 'on') {
+                return str_contains(strtolower($chit->department->name), 'specialist');
+            }
+
+            return true;
+        })->sortBy(function ($chit) {
+            $isSpecialist = str_contains(strtolower($chit->department->name), 'specialist') ? 1 : 0;
+
+            return [
+                $chit->user_id,
+                $isSpecialist,
+                $chit->department->name,
+                $chit->issued_date,
+            ];
+        });
+
+        $departments = Department::all();
+        $users = User::all();
+
+        return view('reports.opd.user-wise', compact('chits', 'start_date', 'end_date', 'departments', 'users'));
+    }
+
+    public function reportOpdSpecialistFees(Request $request)
+    {
+        $start_date = $request->start_date ? Carbon::parse($request->start_date)->format('Y-m-d') : now()->format('Y-m-d');
+        $end_date = $request->end_date ? Carbon::parse($request->end_date)->format('Y-m-d') : now()->format('Y-m-d');
+
+        $date_start_at = $start_date.' 00:00:00';
+        $date_end_at = $end_date.' 23:59:59';
+
+        // Get all chits for the date range with relationships
+        $query = Chit::with(['user', 'patient', 'department'])
+            ->whereBetween('issued_date', [$date_start_at, $date_end_at]);
+
+        // Get all specialist departments
+        $specialistDepartments = Department::where('name', 'ilike', '%specialist%');
+
+        if ($request->department_id) {
+            $specialistDepartments->where('id', $request->department_id);
+        }
+
+        $specialistDepartments = $specialistDepartments->orderBy('name')->get();
+
+        $chits = $query->get();
+
+        // Group by department and calculate statistics
+        $departmentStats = $specialistDepartments->map(function ($department) use ($chits) {
+            $departmentChits = $chits->where('department_id', $department->id);
+
+            $totalPatients = $departmentChits->count();
+            $entitledPatients = $departmentChits->where('government_non_gov', 1)->count();
+            $nonEntitledPatients = $departmentChits->where('government_non_gov', 0)->count();
+            $totalFees = $departmentChits->sum('govt_amount');
+
+            return [
+                'department' => $department,
+                'total_patients' => $totalPatients,
+                'entitled_patients' => $entitledPatients,
+                'non_entitled_patients' => $nonEntitledPatients,
+                'total_fees' => $totalFees,
+            ];
+        });
+
+        // Calculate grand totals
+        $grandTotals = [
+            'total_patients' => $departmentStats->sum('total_patients'),
+            'entitled_patients' => $departmentStats->sum('entitled_patients'),
+            'non_entitled_patients' => $departmentStats->sum('non_entitled_patients'),
+            'total_fees' => $departmentStats->sum('total_fees'),
+        ];
+
+        $departments = Department::all();
+
+        return view('reports.opd.specialist-fees', compact('departmentStats', 'grandTotals', 'start_date', 'end_date', 'departments'));
+    }
+
     public function ipd()
     {
         return view('reports.ipd.index');
@@ -156,14 +240,13 @@ class ReportsController extends Controller
         return view('reports.category-wise.misc');
     }
 
-
     public function categoryWise(Request $request)
     {
         $start_date = Carbon::parse($request->start_date)->format('Y-m-d');
         $end_date = Carbon::parse($request->end_date)->format('Y-m-d');
 
-        $date_start_at = $start_date . ' 00:00:00';
-        $date_end_at = $end_date . ' 23:59:59';
+        $date_start_at = $start_date.' 00:00:00';
+        $date_end_at = $end_date.' 23:59:59';
 
         $fee_categories = QueryBuilder::for(FeeCategory::class)->with('feeTypes')
             ->allowedFilters('name')
@@ -184,10 +267,9 @@ class ReportsController extends Controller
                 $fee_types_relation = $fee_cat->feeTypes;
             }
 
-
             foreach ($fee_types_relation as $fee_type) {
-                // Append the fee type to the category array
-                if ($fee_type->id == 107 || $fee_type->id == 108 || $fee_type->id == 19 || $fee_type->id == 1) {
+                // Fee category 13 = Chit-based fees (includes specialists), also IDs 1, 19 are special chit fees
+                if ($fee_type->fee_category_id == 13 || $fee_type->id == 1 || $fee_type->id == 19) {
                     $categories[$fee_cat->id][$fee_type->id] = [
                         'Non Entitled' => Chit::whereBetween('issued_date', [$date_start_at, $date_end_at])->where('fee_type_id', $fee_type->id)->where('government_non_gov', 0)->count(),
                         'Entitled' => Chit::whereBetween('issued_date', [$date_start_at, $date_end_at])->where('fee_type_id', $fee_type->id)->where('government_non_gov', 1)->count(),
@@ -197,7 +279,7 @@ class ReportsController extends Controller
                         'fee_type_id' => $fee_type->id,
                         'Returned Start Date' => $date_start_at,
                         'Returned End Date' => $date_end_at,
-                        'Returned' => FeeType::where('type', 'Return ' . FeeType::find($fee_type->id)->type)->first(),
+                        'Returned' => FeeType::where('type', 'Return '.FeeType::find($fee_type->id)->type)->first(),
                     ];
                 } else {
                     $categories[$fee_cat->id][$fee_type->id] = [
@@ -209,12 +291,11 @@ class ReportsController extends Controller
                         'fee_type_id' => $fee_type->id,
                         'Returned Start Date' => $date_start_at,
                         'Returned End Date' => $date_end_at,
-                        'Returned' => FeeType::where('type', 'Return ' . FeeType::find($fee_type->id)->type)->first(),
+                        'Returned' => FeeType::where('type', 'Return '.FeeType::find($fee_type->id)->type)->first(),
                     ];
                 }
             }
         }
-
 
         return view('reports.category-wise.index', compact('categories'));
     }
@@ -225,8 +306,8 @@ class ReportsController extends Controller
         $end_date = Carbon::parse($request->end_date)->format('Y-m-d');
         $user = \Auth::user();
 
-        $date_start_at = $start_date . ' 00:00:00';
-        $date_end_at = $end_date . ' 23:59:59';
+        $date_start_at = $start_date.' 00:00:00';
+        $date_end_at = $end_date.' 23:59:59';
 
         $fee_types = null;
         $status = ['Normal', 'Return Fee'];
@@ -243,25 +324,24 @@ class ReportsController extends Controller
 
             $fee_types = QueryBuilder::for(FeeType::class)
                 ->orderBy('fee_category_id')
-                ->orderByRaw('CASE WHEN status = "Normal" THEN 1 ELSE 2 END')
+                ->orderByRaw("CASE WHEN status = 'Normal' THEN 1 ELSE 2 END")
                 ->whereIn('fee_category_id', $fee_category_ids)
                 ->whereIn('status', $status)
                 ->get();
         } else {
             $fee_types = QueryBuilder::for(FeeType::class)
                 ->orderBy('fee_category_id')
-                ->orderByRaw('CASE WHEN status = "Normal" THEN 1 ELSE 2 END')
+                ->orderByRaw("CASE WHEN status = 'Normal' THEN 1 ELSE 2 END")
                 ->whereIn('status', $status)
                 ->get();
         }
 
-
         $categories = [];
 
-
-        if ($request->input('status') == "Normal") {
+        if ($request->input('status') == 'Normal') {
             foreach ($fee_types as $ft) {
-                if ($ft->id == 107 || $ft->id == 108 || $ft->id == 19 || $ft->id == 1) {
+                // Fee category 13 = Chit-based fees (includes specialists), also IDs 1, 19 are special chit fees
+                if ($ft->fee_category_id == 13 || $ft->id == 1 || $ft->id == 19) {
                     $categories[$ft->fee_category_id][$ft->id] = [
                         'Non Entitled' => Chit::whereBetween('issued_date', [$date_start_at, $date_end_at])->where('fee_type_id', $ft->id)->where('government_non_gov', 0)->count(),
                         'Entitled' => Chit::whereBetween('issued_date', [$date_start_at, $date_end_at])->where('fee_type_id', $ft->id)->where('government_non_gov', 1)->count(),
@@ -271,17 +351,16 @@ class ReportsController extends Controller
                         'fee_type_id' => $ft->id,
                         'Returned Start Date' => $date_start_at,
                         'Returned End Date' => $date_end_at,
-                        'Returned' => FeeType::where('type', 'Return ' . FeeType::find($ft->id)->type)->first(),
+                        'Returned' => FeeType::where('type', 'Return '.FeeType::find($ft->id)->type)->first(),
                         'Status' => $ft->status,
                     ];
                 } else {
 
                     $return_fee_id = 0;
-                    $return_fee = FeeType::where('type', 'Return ' . FeeType::find($ft->id)->type)->first();
-                    if (!empty($return_fee)) {
+                    $return_fee = FeeType::where('type', 'Return '.FeeType::find($ft->id)->type)->first();
+                    if (! empty($return_fee)) {
                         $return_fee_id = $return_fee->id;
                     }
-
 
                     $categories[$ft->fee_category_id][$ft->id] = [
                         'Non Entitled' => PatientTest::whereBetween('created_at', [$date_start_at, $date_end_at])->where('fee_type_id', $ft->id)->where('government_non_gov', 0)->count(),
@@ -296,14 +375,15 @@ class ReportsController extends Controller
                         'fee_type_id' => $ft->id,
                         'Returned Start Date' => $date_start_at,
                         'Returned End Date' => $date_end_at,
-                        'Returned' => FeeType::where('type', 'Return ' . FeeType::find($ft->id)->type)->first(),
+                        'Returned' => FeeType::where('type', 'Return '.FeeType::find($ft->id)->type)->first(),
                         'Status' => $ft->status,
                     ];
                 }
             }
         } else {
             foreach ($fee_types as $ft) {
-                if ($ft->id == 107 || $ft->id == 108 || $ft->id == 19 || $ft->id == 1) {
+                // Fee category 13 = Chit-based fees (includes specialists), also IDs 1, 19 are special chit fees
+                if ($ft->fee_category_id == 13 || $ft->id == 1 || $ft->id == 19) {
                     $categories[$ft->fee_category_id][$ft->id] = [
                         'Non Entitled' => Chit::whereBetween('issued_date', [$date_start_at, $date_end_at])->where('fee_type_id', $ft->id)->where('government_non_gov', 0)->count(),
                         'Entitled' => Chit::whereBetween('issued_date', [$date_start_at, $date_end_at])->where('fee_type_id', $ft->id)->where('government_non_gov', 1)->count(),
@@ -313,7 +393,7 @@ class ReportsController extends Controller
                         'fee_type_id' => $ft->id,
                         'Returned Start Date' => $date_start_at,
                         'Returned End Date' => $date_end_at,
-                        'Returned' => FeeType::where('type', 'Return ' . FeeType::find($ft->id)->type)->first(),
+                        'Returned' => FeeType::where('type', 'Return '.FeeType::find($ft->id)->type)->first(),
                         'Status' => $ft->status,
                     ];
                 } else {
@@ -330,20 +410,18 @@ class ReportsController extends Controller
                         'fee_type_id' => $ft->id,
                         'Returned Start Date' => $date_start_at,
                         'Returned End Date' => $date_end_at,
-                        'Returned' => FeeType::where('type', 'Return ' . FeeType::find($ft->id)->type)->first(),
+                        'Returned' => FeeType::where('type', 'Return '.FeeType::find($ft->id)->type)->first(),
                         'Status' => $ft->status,
                     ];
                 }
             }
         }
 
-
         if ($user->hasRole('Auditor')) {
             return view('reports.auditor.department-wise', compact('categories', 'fee_types'));
         } else {
             return view('reports.category-wise.department-wise', compact('categories', 'fee_types'));
         }
-
 
     }
 
@@ -352,14 +430,12 @@ class ReportsController extends Controller
 
         ini_set('max_execution_time', 300);
 
-
         $start_date = Carbon::parse($request->start_date)->format('Y-m-d');
         $end_date = Carbon::parse($request->end_date)->format('Y-m-d');
         $user = \Auth::user();
 
-        $date_start_at = $start_date . ' 00:00:00';
-        $date_end_at = $end_date . ' 23:59:59';
-
+        $date_start_at = $start_date.' 00:00:00';
+        $date_end_at = $end_date.' 23:59:59';
 
         $fee_types = null;
         //        $status = ['Normal', 'Return Fee'];
@@ -370,7 +446,6 @@ class ReportsController extends Controller
         if ($get_status_values !== null) {
             $status = explode(',', $get_status_values);
         }
-
 
         if ($fee_category_ids !== null) {
             // Split the string into an array of individual IDs
@@ -390,11 +465,11 @@ class ReportsController extends Controller
                 ->get();
         }
 
-
         $categories = [];
 
         foreach ($fee_types as $ft) {
-            if ($ft->id == 107 || $ft->id == 108 || $ft->id == 19 || $ft->id == 1) {
+            // Fee category 13 = Chit-based fees (includes specialists), also IDs 1, 19 are special chit fees
+            if ($ft->fee_category_id == 13 || $ft->id == 1 || $ft->id == 19) {
                 $categories[$ft->fee_category_id][$ft->id] = [
                     'Non Entitled' => Chit::whereBetween('issued_date', [$date_start_at, $date_end_at])->where('fee_type_id', $ft->id)->where('government_non_gov', 0)->count(),
                     'Entitled' => Chit::whereBetween('issued_date', [$date_start_at, $date_end_at])->where('fee_type_id', $ft->id)->where('government_non_gov', 1)->count(),
@@ -410,11 +485,10 @@ class ReportsController extends Controller
             } else {
 
                 $return_fee_id = 0;
-                $return_fee = FeeType::where('type', 'Return ' . FeeType::find($ft->id)->type)->first();
-                if (!empty($return_fee)) {
+                $return_fee = FeeType::where('type', 'Return '.FeeType::find($ft->id)->type)->first();
+                if (! empty($return_fee)) {
                     $return_fee_id = $return_fee->id;
                 }
-
 
                 $categories[$ft->fee_category_id][$ft->id] = [
                     'Non Entitled' => PatientTest::whereBetween('created_at', [$date_start_at, $date_end_at])->where('fee_type_id', $ft->id)->where('government_non_gov', 0)->where('status', 'Normal')->count(),
@@ -431,7 +505,6 @@ class ReportsController extends Controller
             }
         }
 
-
         return view('reports.category-wise.department-wise-two', compact('categories', 'fee_types'));
     }
 
@@ -440,8 +513,8 @@ class ReportsController extends Controller
         $start_date = Carbon::parse($request->start_date)->format('Y-m-d');
         $end_date = Carbon::parse($request->end_date)->format('Y-m-d');
 
-        $date_start_at = $start_date . ' 00:00:00';
-        $date_end_at = $end_date . ' 23:59:59';
+        $date_start_at = $start_date.' 00:00:00';
+        $date_end_at = $end_date.' 23:59:59';
 
         $admissions = QueryBuilder::for(Admission::class)->with('invoice', 'patient')
             ->allowedFilters([
@@ -464,7 +537,6 @@ class ReportsController extends Controller
             ->whereBetween('created_at', [$date_start_at, $date_end_at])
             ->get();
 
-
         return view('reports.general-information.index', compact('admissions'));
     }
 
@@ -473,8 +545,8 @@ class ReportsController extends Controller
         $start_date = $request->has('start_date') ? Carbon::parse($request->start_date)->format('Y-m-d') : Carbon::today()->format('Y-m-d');
         $end_date = $request->has('end_date') ? Carbon::parse($request->end_date)->format('Y-m-d') : Carbon::today()->format('Y-m-d');
 
-        $date_start_at = $start_date . ' 00:00:00';
-        $date_end_at = $end_date . ' 23:59:59';
+        $date_start_at = $start_date.' 00:00:00';
+        $date_end_at = $end_date.' 23:59:59';
 
         $treatments = QueryBuilder::for(\App\Models\PatientEmergencyTreatment::class)
             ->with('patient', 'disease', 'user')
