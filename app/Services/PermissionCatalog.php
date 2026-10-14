@@ -24,7 +24,7 @@ class PermissionCatalog
             'label' => 'Operations',
             'hint' => 'Day-to-day hospital work. “View” opens the screen; add Create / Edit / Delete only where the user must change data.',
             'sections' => [
-                'Dashboard' => ['dashboard', 'dashboard statistics'],
+                'Dashboard' => ['dashboard', 'dashboard statistics', 'admin dashboard', 'front desk dashboard'],
                 'Patients & billing' => ['patients', 'chits', 'invoices', 'admissions'],
             ],
         ],

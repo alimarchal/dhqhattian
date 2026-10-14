@@ -9,13 +9,48 @@ use App\Models\FeeCategory;
 use App\Models\FeeType;
 use App\Models\Invoice;
 use App\Models\Patient;
+use App\Services\DashboardData;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
 class DashboardController extends Controller
 {
-    //
-    public function index()
+    /** Front desk users get their own dashboard, management gets the overview; anyone else keeps the classic one. */
+    public function index(\Illuminate\Http\Request $request)
+    {
+        $user = \Auth::user();
+        $admin = $user->can('view admin dashboard');
+        $frontDesk = $user->can('view front desk dashboard');
+
+        // Until the permissions exist (before the migration) fall back to the role.
+        if (! $admin && ! $frontDesk) {
+            $admin = $user->hasRole(['Super-Admin', 'Administrator']);
+            $frontDesk = ! $admin && $user->hasRole('Front Desk/Receptionist');
+        }
+
+        if ($admin) {
+            // management can look back at any period: ?from=YYYY-MM-DD&to=YYYY-MM-DD (default: today)
+            $parse = function (?string $value) {
+                try {
+                    return $value ? \Carbon\Carbon::parse($value) : null;
+                } catch (\Throwable) {
+                    return null;
+                }
+            };
+            $from = $parse($request->query('from'));
+            $to = $parse($request->query('to'));
+
+            return view('dashboards.admin', ['data' => DashboardData::admin($from ?? $to, $to ?? $from)]);
+        }
+        if ($frontDesk) {
+            return view('dashboards.front-desk', ['data' => DashboardData::frontDesk($user)]);
+        }
+
+        return $this->classic();
+    }
+
+    /** The original dashboard (kept for roles such as Auditor). */
+    private function classic()
     {
 
         $hif_amount_today = 0;

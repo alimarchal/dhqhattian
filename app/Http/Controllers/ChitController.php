@@ -230,6 +230,8 @@ class ChitController extends Controller
     public function today()
     {
         $user = \Auth::user();
+        // This screen lists every user's records: management only (it used to fail with a 500 for everybody else).
+        abort_unless($user->hasRole(['Super-Admin', 'Administrator']), 403, 'User does not have the right permissions.');
         $issued_chits = null;
         if ($user->hasRole('Front Desk/Receptionist')) {
             $issued_chits = QueryBuilder::for(Chit::class)

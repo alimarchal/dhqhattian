@@ -20,6 +20,8 @@ class RolesAndPermissionsSeeder extends Seeder
             // Dashboard
             'view dashboard',
             'view dashboard statistics',
+            'view admin dashboard',
+            'view front desk dashboard',
 
             // Patients
             'view patients',
