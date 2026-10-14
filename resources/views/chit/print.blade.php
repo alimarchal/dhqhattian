@@ -50,7 +50,7 @@
                         }
                     @endphp
                     {{-- @php $patient_id = (string) "RS.". $chit->amount . "\nC$chit->id" .
-                    "\n$chit->issued_date\nDeveloped By Ali Raza Marchal\nTel: 0300-8169924"; @endphp--}}
+                    "\n$chit->issued_date\nDeveloped By Ali Raza Marchal\nTel: 0335-9991441"; @endphp--}}
                     {!! DNS2D::getBarcodeSVG($patient_id, 'QRCODE', 3, 3) !!}
                 </div>
             </div>
