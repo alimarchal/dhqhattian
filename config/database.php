@@ -81,6 +81,11 @@ return [
             'prefix_indexes' => true,
             'search_path' => 'public',
             'sslmode' => 'prefer',
+            'dump' => [
+                'dump_binary_path' => env('DB_DUMP_BINARY_PATH', ''),
+                'timeout' => 60 * 30,
+                'add_extra_option' => '--format=custom --compress=9',
+            ],
         ],
 
         'sqlsrv' => [
