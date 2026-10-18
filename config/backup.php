@@ -80,7 +80,7 @@ return [
              * For a complete list of available customization options, see https://github.com/spatie/db-dumper
              */
             'databases' => [
-                'mysql',
+                env('DB_CONNECTION', 'pgsql'),
             ],
         ],
 
@@ -103,9 +103,15 @@ return [
          * If not specified, the file extension will be .archive for MongoDB and .sql for all other databases
          * The file extension should be specified without a leading .
          */
-        'database_dump_file_extension' => '',
+        'database_dump_file_extension' => 'backup',
 
         'destination' => [
+
+            /*
+             * The pg_dump custom-format file is already compressed, so the zip
+             * only stores it instead of spending time compressing it again.
+             */
+            'compression_method' => ZipArchive::CM_STORE,
 
             /*
              * The filename prefix used for the backup zip file.
