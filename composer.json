@@ -12,6 +12,7 @@
         "laravel/sanctum": "^4.0",
         "laravel/tinker": "^3.0",
         "livewire/livewire": "^3.0",
+        "masbug/flysystem-google-drive-ext": "^2.5",
         "milon/barcode": "^13.0",
         "spatie/laravel-backup": "^10.0",
         "spatie/laravel-permission": "^6.0",
