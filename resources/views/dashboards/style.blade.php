@@ -200,3 +200,16 @@
     .apexcharts-tooltip { box-shadow: 0 10px 24px -8px rgba(15, 23, 42, .35) !important; border-radius: 10px !important; }
     @media print { .db-top-actions, .db-filter-panel { display: none !important; } }
 </style>
+<style>
+    .db-kpi-value { margin-bottom: 5px; padding-top: 2px; }
+    .db-kpi-hint { margin-top: 4px; display: flex; flex-wrap: wrap; gap: 4px 6px; align-items: center; }
+</style>
+<style>
+    /* lighter motion: no always-on animations, no GPU layers per card, heavy chart cards only change shadow on hover */
+    .db-hero { animation: none; background-size: auto; }
+    .db-card, .db-link, .db-kpi, .db-action { will-change: auto; }
+    .db-card, .db-link { animation: none; }
+    .db-card:hover { transform: none; box-shadow: 0 16px 32px -14px rgba(15, 23, 42, .26), 0 3px 8px rgba(15, 23, 42, .06); }
+    .db-kpi, .db-insight { animation: db-rise .35s ease both; }
+    .db-live i { animation-duration: 3s; }
+</style>

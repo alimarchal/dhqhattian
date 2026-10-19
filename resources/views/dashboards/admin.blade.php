@@ -454,7 +454,8 @@
         <script src="{{ url('js/apexcharts.js') }}"></script>
         <script>
             const shadow = { enabled: true, top: 3, left: 0, blur: 5, opacity: 0.16, color: '#0f172a' };
-            const base = { toolbar: { show: false }, fontFamily: 'inherit', animations: { enabled: true, speed: 450 }, foreColor: '#475569', dropShadow: shadow };
+            const base = { toolbar: { show: false }, fontFamily: 'inherit', animations: { enabled: true, speed: 320, animateGradually: { enabled: false }, dynamicAnimation: { enabled: false } }, foreColor: '#475569' };
+            const lineShadow = { dropShadow: shadow }; // a soft lift for the main lines only (shadows on every bar make the page heavy)
             const xlabels = { rotate: 0, hideOverlappingLabels: true, style: { fontSize: '11px', fontWeight: 500 } };
             const grid = { borderColor: '#e2e8f0', strokeDashArray: 4 };
             const int = (v) => Math.round(v).toLocaleString();
@@ -464,7 +465,29 @@
             const series = @json($data['series']);
             const labels = @json($data['labels']);
             const tick = Math.min(labels.length, 7);
-            const draw = (selector, options) => { const el = document.querySelector(selector); if (el) new ApexCharts(el, options).render(); };
+            // Charts are drawn only when they are about to scroll into view, one per animation frame, so the page
+            // opens quickly and scrolling stays smooth (43 charts at once cost about 1.7 s of main-thread time).
+            const queue = []; let pumping = false;
+            const pump = () => { const job = queue.shift(); if (!job) { pumping = false; return; } pumping = true; job(); requestAnimationFrame(() => setTimeout(pump, 0)); };
+            const enqueue = (job) => { queue.push(job); if (!pumping) requestAnimationFrame(pump); };
+            const pending = new Map();
+            const io = new IntersectionObserver((entries) => entries.forEach((entry) => {
+                if (!entry.isIntersecting) return;
+                const render = pending.get(entry.target);
+                if (render) { pending.delete(entry.target); io.unobserve(entry.target); enqueue(render); }
+            }), { rootMargin: '600px 0px' });
+            const draw = (selector, options) => {
+                const el = document.querySelector(selector);
+                if (!el) return;
+                pending.set(el, () => new ApexCharts(el, options).render());
+                io.observe(el);
+            };
+            // the PDF export draws every chart that is still waiting
+            window.dashboardRenderAll = () => new Promise((resolve) => {
+                [...pending.entries()].forEach(([el, render]) => { pending.delete(el); io.unobserve(el); render(); });
+                const wait = () => (queue.length || pumping ? setTimeout(wait, 100) : setTimeout(resolve, 700));
+                wait();
+            });
 
             // sparklines inside the KPI cards
             const total = series.govt.map((g, i) => g + series.hif[i]);
@@ -489,7 +512,7 @@
 
             // 3. trends -------------------------------------------------------------------------
             draw('#trend-chart', {
-                chart: { ...base, type: 'line', height: 320, zoom: { enabled: true }, toolbar: { show: true, offsetY: -6, tools: { download: true, zoom: true, zoomin: true, zoomout: true, pan: false, reset: true } } },
+                chart: { ...base, ...lineShadow, type: 'line', height: 320, zoom: { enabled: true }, toolbar: { show: true, offsetY: -6, tools: { download: true, zoom: true, zoomin: true, zoomout: true, pan: false, reset: true } } },
                 series: [{ name: 'Chits', type: 'column', data: series.chits }, { name: '{{ $data['window'] }}-{{ $data['monthly'] ? 'month' : 'day' }} average', type: 'line', data: @json($data['moving_average']) }],
                 xaxis: { categories: labels, tickAmount: tick, labels: xlabels, axisBorder: { color: '#cbd5e1' } },
                 colors: ['#a5b4fc', '#312e81'], stroke: { width: [0, 3.5], curve: 'smooth' }, markers: { size: [0, 3], strokeWidth: 2, strokeColors: '#fff', hover: { size: 7 } },
@@ -509,7 +532,7 @@
             const race = @json($data['race']);
             const raceLabels = race.unit === 'hour' ? race.labels.map((l) => l.slice(0, 2)) : race.labels.map((l) => l.replace('Day ', ''));
             draw('#race-chart', {
-                chart: { ...base, type: 'area', height: 320 },
+                chart: { ...base, ...lineShadow, type: 'area', height: 320 },
                 series: [{ name: 'This period', data: race.current }, { name: 'Previous period', data: race.previous }],
                 xaxis: { categories: raceLabels, tickAmount: Math.min(raceLabels.length, 8), labels: xlabels, title: { text: race.unit === 'hour' ? 'hour of the day' : 'day of the period' } },
                 colors: ['#16a34a', '#94a3b8'], stroke: { width: [3.5, 2.5], curve: 'smooth', dashArray: [0, 5] },
@@ -529,7 +552,7 @@
             const control = @json($data['control']);
             const outside = control.values.map((v) => (v > control.upper || v < control.lower ? v : null));
             draw('#control-chart', {
-                chart: { ...base, type: 'line', height: 280 },
+                chart: { ...base, ...lineShadow, type: 'line', height: 280 },
                 series: [{ name: 'Daily chits', data: control.values }, { name: 'Unusual day', data: outside }, { name: 'Average', data: control.values.map(() => control.mean) }, { name: 'Upper limit', data: control.values.map(() => control.upper) }, { name: 'Lower limit', data: control.values.map(() => control.lower) }],
                 xaxis: { categories: control.labels, tickAmount: 8, labels: xlabels }, colors: ['#4f46e5', '#e11d48', '#16a34a', '#f59e0b', '#f59e0b'],
                 stroke: { width: [2.5, 0, 2, 1.5, 1.5], dashArray: [0, 0, 0, 6, 6], curve: 'straight' }, markers: { size: [0, 6, 0, 0, 0], strokeColors: '#fff', strokeWidth: 2 }, dataLabels: { enabled: false }, grid,
@@ -552,14 +575,14 @@
                 legend: { position: 'top', horizontalAlign: 'right', fontWeight: 600 }, tooltip: { shared: true, intersect: false, y: { formatter: rupees } },
             });
             draw('#months-chits', {
-                chart: { ...base, type: 'line', height: 190 },
+                chart: { ...base, ...lineShadow, type: 'line', height: 190 },
                 series: [{ name: 'Chits', data: @json($data['chits_monthly']) }], xaxis: { categories: monthLabels, labels: { rotate: -45, rotateAlways: true, hideOverlappingLabels: false, style: { fontSize: '10px' } } },
                 colors: ['#2563eb'], stroke: { width: 3, curve: 'smooth' }, markers: { size: 4, strokeColors: '#fff', strokeWidth: 2 }, dataLabels: { enabled: false }, grid,
                 yaxis: { min: 0, title: { text: 'Chits' }, labels: { formatter: k } }, legend: { show: false }, tooltip: { y: { formatter: int } },
             });
             const yoy = @json($data['yoy']);
             draw('#yoy-chart', {
-                chart: { ...base, type: 'line', height: 280 },
+                chart: { ...base, ...lineShadow, type: 'line', height: 280 },
                 series: [{ name: String(yoy.year), data: yoy.total[yoy.year] }, { name: String(yoy.year - 1), data: yoy.total[yoy.year - 1] }],
                 xaxis: { categories: yoy.labels }, colors: ['#16a34a', '#94a3b8'], stroke: { width: [3.5, 2.5], curve: 'smooth', dashArray: [0, 5] }, markers: { size: [4, 0], strokeColors: '#fff', strokeWidth: 2, hover: { size: 7 } },
                 dataLabels: { enabled: false }, grid, yaxis: { min: 0, title: { text: 'Total revenue (Rs)' }, labels: { formatter: k } }, legend: { position: 'bottom', horizontalAlign: 'center', fontWeight: 600 }, tooltip: { shared: true, intersect: false, y: { formatter: (v) => (v == null ? '—' : rupees(v)) } },
@@ -574,7 +597,7 @@
                 yaxis: { min: 0, title: { text: 'Revenue (Rs)' }, labels: { formatter: k } }, legend: { position: 'top', horizontalAlign: 'right', fontWeight: 600 }, tooltip: { shared: true, intersect: false, y: { formatter: rupees } },
             });
             draw('#services-share', {
-                chart: { ...base, type: 'line', height: 240 },
+                chart: { ...base, ...lineShadow, type: 'line', height: 240 },
                 series: [{ name: 'Cumulative share of total', data: services.map((s) => { running += Number(s.g) + Number(s.h); return Math.round(running / serviceTotal * 100); }) }],
                 xaxis: { categories: serviceNames, labels: { rotate: -40, rotateAlways: true, trim: true, maxHeight: 80, hideOverlappingLabels: false, style: { fontSize: '10px' } } }, colors: ['#e11d48'], stroke: { width: 3, curve: 'smooth' }, markers: { size: 4, strokeColors: '#fff', strokeWidth: 2 }, dataLabels: { enabled: false }, grid,
                 yaxis: { min: 0, max: 100, tickAmount: 4, title: { text: 'Cumulative %' }, labels: { formatter: (v) => Math.round(v) + '%' } }, legend: { show: false }, tooltip: { y: { formatter: (v) => v + '% of the total' } },
@@ -659,7 +682,7 @@
                 });
             @endif
             draw('#admissions-chart', {
-                chart: { ...base, type: 'area', height: 250 }, series: [{ name: 'Admissions', data: series.admissions }], xaxis: { categories: labels, tickAmount: Math.min(labels.length, 6), labels: { rotate: 0, hideOverlappingLabels: true, style: { fontSize: '10px' } } },
+                chart: { ...base, ...lineShadow, type: 'area', height: 250 }, series: [{ name: 'Admissions', data: series.admissions }], xaxis: { categories: labels, tickAmount: Math.min(labels.length, 6), labels: { rotate: 0, hideOverlappingLabels: true, style: { fontSize: '10px' } } },
                 colors: ['#e11d48'], stroke: { curve: 'smooth', width: 3 }, markers: { size: 3, strokeColors: '#fff', strokeWidth: 2, hover: { size: 6 } }, fill: { type: 'gradient', gradient: { opacityFrom: .4, opacityTo: .02 } }, dataLabels: { enabled: false }, grid, yaxis: { min: 0, forceNiceScale: true, decimalsInFloat: 0, labels: { formatter: int } },
             });
             draw('#wards-chart', {

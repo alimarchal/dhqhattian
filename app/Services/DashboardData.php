@@ -37,7 +37,7 @@ class DashboardData
             $from = $to->copy()->subDays(800);
         }
 
-        return Cache::remember('dashboard.admin.'.$from->toDateString().'.'.$to->toDateString().'.'.now()->format('YmdHi'), 60, fn () => self::buildAdmin($from, $to));
+        return Cache::remember('dashboard.admin.'.$from->toDateString().'.'.$to->toDateString().'.'.now()->format('YmdHi').'.'.intdiv((int) now()->format('i'), 2), 120, fn () => self::buildAdmin($from, $to));
     }
 
     /** @return array<string, mixed> */
